@@ -1,0 +1,10 @@
+[package]
+name = "openinfra_logger"
+version = "0.1.0"
+edition = "2021"
+authors = ["Jonathas"]
+description = "Critical structured logging and observability library for modern infrastructure"
+
+[dependencies]
+# Dependencies would go here (e.g., serde_json).
+# For this foundational version, we use standard macro string formatting to remain zero-dependency.

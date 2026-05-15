@@ -82,7 +82,7 @@ Our vision is to become the standard logging infrastructure across diverse moder
 - [x] Native OpenTelemetry Tracing integration (traceId injection)
 - [x] Support for Python
 - [x] Seamless Integrations with Grafana, Datadog, ELK stack
-- [ ] Support for Rust and Go
+- [x] Support for Rust and Go
 - [x] AI-powered log analysis and anomaly detection
 
 ## AI-Powered Root Cause Analysis (Powered by Claude)
