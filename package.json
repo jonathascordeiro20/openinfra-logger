@@ -1,5 +1,5 @@
 {
-  "name": "openinfra-logger",
+  "name": "@jonathascordeiro20/openinfra-logger",
   "version": "0.1.0",
   "description": "Critical structured logging and observability library for modern infrastructure",
   "main": "src/index.js",
@@ -20,7 +20,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/jonathascordeiro20/openinfra-logger.git"
+    "url": "git+https://github.com/jonathascordeiro20/openinfra-logger.git"
   },
   "devDependencies": {
     "express": "^4.18.2"

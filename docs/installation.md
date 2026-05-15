@@ -5,7 +5,7 @@ OpenInfra Logger is designed to have zero external production dependencies, ensu
 
 ### Using NPM
 ```bash
-npm install openinfra-logger
+npm install @jonathascordeiro20/openinfra-logger
 ```
 
 ### Using Yarn

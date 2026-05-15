@@ -16,7 +16,7 @@ In the landscape of modern distributed systems, logging is not merely an auxilia
 ## Installation
 
 ```bash
-npm install openinfra-logger
+npm install @jonathascordeiro20/openinfra-logger
 ```
 For more details, see our [Installation Guide](docs/installation.md).
 
