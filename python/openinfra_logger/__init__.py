@@ -19,7 +19,10 @@ _config = {
     'remote_url': None,
     'remote_headers': {'Content-Type': 'application/json'},
     'default_metadata': {},
-    'formatter': 'default' # 'default', 'datadog', 'elastic'
+    'formatter': 'default', # 'default', 'datadog', 'elastic'
+    'redact_keys': ['password', 'token', 'secret', 'api_key', 'credit_card'],
+    'batch_size': 100,
+    'flush_interval_ms': 2000
 }
 
 _logger = logging.getLogger("openinfra_logger")
@@ -38,6 +41,50 @@ def configure(**kwargs):
     Configure the logger transports and defaults.
     """
     _config.update(kwargs)
+
+def redact_object(obj, keys_to_redact):
+    if isinstance(obj, dict):
+        result = {}
+        for k, v in obj.items():
+            if k.lower() in keys_to_redact:
+                result[k] = '[REDACTED]'
+            else:
+                result[k] = redact_object(v, keys_to_redact)
+        return result
+    elif isinstance(obj, list):
+        return [redact_object(item, keys_to_redact) for item in obj]
+    return obj
+
+import threading
+_remote_buffer = []
+_flush_timer = None
+
+def _flush_remote():
+    global _remote_buffer, _flush_timer
+    if not _remote_buffer:
+        return
+        
+    payload = json.dumps(_remote_buffer)
+    _remote_buffer = []
+    
+    if _flush_timer:
+        _flush_timer.cancel()
+        _flush_timer = None
+        
+    try:
+        req = urllib.request.Request(
+            _config['remote_url'], 
+            data=payload.encode('utf-8'), 
+            headers=_config['remote_headers'],
+            method='POST'
+        )
+        urllib.request.urlopen(req, timeout=2.0)
+    except Exception as e:
+        _logger.error(json.dumps({
+            "level": "error", 
+            "message": f"OpenInfra Logger: Failed to send remote logs batch: {str(e)}",
+            "timestamp": datetime.datetime.utcnow().isoformat() + "Z"
+        }))
 
 def extract_trace_context():
     """
@@ -59,7 +106,8 @@ def extract_trace_context():
     return {}
 
 def _dispatch(log_entry, original_level):
-    output = json.dumps(log_entry)
+    redacted_entry = redact_object(log_entry, _config['redact_keys'])
+    output = json.dumps(redacted_entry)
 
     # 1. Console transport
     if 'console' in _config['transports']:
@@ -85,23 +133,15 @@ def _dispatch(log_entry, original_level):
             }))
 
     # 3. Remote transport
+    global _flush_timer
     if 'remote' in _config['transports'] and _config.get('remote_url'):
-        try:
-            req = urllib.request.Request(
-                _config['remote_url'], 
-                data=output.encode('utf-8'), 
-                headers=_config['remote_headers'],
-                method='POST'
-            )
-            # Fire and forget with a short timeout to prevent blocking
-            urllib.request.urlopen(req, timeout=2.0)
-        except Exception as e:
-            _logger.error(json.dumps({
-                "level": "error",
-                "message": f"OpenInfra Logger: Failed to send remote log: {str(e)}",
-                "timestamp": datetime.datetime.utcnow().isoformat() + "Z"
-            }))
-
+        _remote_buffer.append(redacted_entry)
+        if len(_remote_buffer) >= _config['batch_size']:
+            _flush_remote()
+        elif _flush_timer is None:
+            _flush_timer = threading.Timer(_config['flush_interval_ms'] / 1000.0, _flush_remote)
+            _flush_timer.daemon = True
+            _flush_timer.start()
 
 def log(message: str, level: str = 'info', metadata: dict = None):
     """

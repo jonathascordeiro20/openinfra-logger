@@ -22,7 +22,10 @@ let config = {
   remoteUrl: null,
   remoteHeaders: { 'Content-Type': 'application/json' },
   defaultMetadata: {},
-  formatter: 'default' // 'default', 'datadog', 'elastic'
+  formatter: 'default', // 'default', 'datadog', 'elastic'
+  redactKeys: ['password', 'token', 'secret', 'api_key', 'credit_card'],
+  batchSize: 100,
+  flushIntervalMs: 2000
 };
 
 /**
@@ -31,6 +34,49 @@ let config = {
  */
 function configure(newConfig = {}) {
   config = { ...config, ...newConfig };
+}
+
+/**
+ * Deep clones an object and redacts sensitive keys.
+ */
+function redactObject(obj, keysToRedact) {
+  if (typeof obj !== 'object' || obj === null) return obj;
+  if (Array.isArray(obj)) return obj.map(item => redactObject(item, keysToRedact));
+  
+  const result = {};
+  for (const key in obj) {
+    if (keysToRedact.includes(key.toLowerCase())) {
+      result[key] = '[REDACTED]';
+    } else {
+      result[key] = redactObject(obj[key], keysToRedact);
+    }
+  }
+  return result;
+}
+
+let remoteBuffer = [];
+let flushTimeout = null;
+
+function flushRemote() {
+  if (remoteBuffer.length === 0) return;
+  
+  const payload = JSON.stringify(remoteBuffer);
+  remoteBuffer = [];
+
+  if (config.remoteUrl && typeof fetch !== 'undefined') {
+    fetch(config.remoteUrl, {
+      method: 'POST',
+      headers: config.remoteHeaders,
+      body: payload
+    }).catch(err => {
+      console.error('OpenInfra Logger: Failed to send remote logs batch', err.message);
+    });
+  }
+  
+  if (flushTimeout) {
+    clearTimeout(flushTimeout);
+    flushTimeout = null;
+  }
 }
 
 /**
@@ -60,7 +106,8 @@ function extractTraceContext() {
  * Internal function to dispatch log to configured transports.
  */
 function dispatch(logEntry, originalLevel) {
-  const output = JSON.stringify(logEntry);
+  const redactedLogEntry = redactObject(logEntry, config.redactKeys);
+  const output = JSON.stringify(redactedLogEntry);
 
   if (config.transports.includes('console')) {
     if (originalLevel === 'error') console.error(output);
@@ -75,16 +122,13 @@ function dispatch(logEntry, originalLevel) {
     });
   }
 
-  if (config.transports.includes('remote') && config.remoteUrl && typeof fetch !== 'undefined') {
-    // Fire and forget remote logging
-    fetch(config.remoteUrl, {
-      method: 'POST',
-      headers: config.remoteHeaders,
-      body: output
-    }).catch(err => {
-      // Avoid circular logging loops, just output to native console.error
-      console.error('OpenInfra Logger: Failed to send remote log', err.message);
-    });
+  if (config.transports.includes('remote')) {
+    remoteBuffer.push(redactedLogEntry);
+    if (remoteBuffer.length >= config.batchSize) {
+      flushRemote();
+    } else if (!flushTimeout) {
+      flushTimeout = setTimeout(flushRemote, config.flushIntervalMs);
+    }
   }
 }
 

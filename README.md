@@ -74,6 +74,11 @@ configure({ formatter: 'datadog' });
 // configure({ formatter: 'elastic' }); // Transforms `timestamp` -> `@timestamp`
 ```
 
+### Enterprise Robustness (Security & Performance)
+Built for high-stakes environments, the logger includes two critical enterprise features out-of-the-box:
+1. **Auto-Redaction**: Keys like `password`, `token`, `secret`, `api_key`, and `credit_card` are automatically intercepted and replaced with `[REDACTED]` to prevent LGPD/GDPR leaks.
+2. **Batched Remote Transport**: When sending logs to a remote API, the logger buffers them in memory and sends them in batches (e.g., every 100 logs or 2 seconds) to prevent overwhelming your infrastructure under high load.
+
 ## Roadmap
 
 Our vision is to become the standard logging infrastructure across diverse modern tech stacks.
