@@ -83,7 +83,16 @@ Our vision is to become the standard logging infrastructure across diverse moder
 - [x] Support for Python
 - [x] Seamless Integrations with Grafana, Datadog, ELK stack
 - [ ] Support for Rust and Go
-- [ ] AI-powered log analysis and anomaly detection
+- [x] AI-powered log analysis and anomaly detection
+
+## AI-Powered Root Cause Analysis (Powered by Claude)
+The **OpenInfra Logger** comes with a built-in AI assistant for Site Reliability Engineers (SREs). It can parse your log files, find anomalies, and consult the Anthropic Claude API to generate an instant Root Cause Analysis.
+
+```bash
+# Analyze a specific log file
+npm run analyze app.log
+```
+*Note: Set the `ANTHROPIC_API_KEY` environment variable for automated API integration, or the tool will generate a prompt for you to paste into the Claude web interface.*
 
 ## License
 

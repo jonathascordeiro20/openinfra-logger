@@ -6,7 +6,8 @@
   "scripts": {
     "test": "echo \"No tests specified yet. Add test framework (e.g. Jest) here.\" && exit 0",
     "lint": "echo \"Linting not configured yet. Add ESLint here.\" && exit 0",
-    "build": "echo \"No build step required for Node.js core library.\" && exit 0"
+    "build": "echo \"No build step required for Node.js core library.\" && exit 0",
+    "analyze": "node tools/ai-analyzer.js"
   },
   "keywords": [
     "logger",
