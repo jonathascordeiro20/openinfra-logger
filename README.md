@@ -1,6 +1,6 @@
 # OpenInfra Logger
 
-![NPM Version](https://img.shields.io/npm/v/openinfra-logger) ![License](https://img.shields.io/npm/l/openinfra-logger) ![Build Status](https://img.shields.io/github/actions/workflow/status/jonathascordeiro20/openinfra-logger/ci.yml)
+![NPM Version](https://img.shields.io/npm/v/@jonathascordeiro20/openinfra-logger) ![License](https://img.shields.io/npm/l/@jonathascordeiro20/openinfra-logger) ![Build Status](https://img.shields.io/github/actions/workflow/status/jonathascordeiro20/openinfra-logger/ci.yml)
 
 **OpenInfra Logger** is a robust, structured logging and observability library designed for Node.js and Python applications. It serves as an invisible yet critical piece of infrastructure, ensuring modern applications maintain unparalleled visibility into their security, performance, and operational health.
 
