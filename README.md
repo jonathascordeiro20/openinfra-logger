@@ -62,6 +62,18 @@ tracer.startActiveSpan('auth-request', (span) => {
 });
 ```
 
+### Ecosystem Integrations (Datadog & ELK)
+Platforms like Datadog and Elastic have strict JSON schema requirements for linking logs to APM traces. **OpenInfra Logger** includes native formatters to instantly transform your logs.
+```javascript
+const { configure, log } = require('@jonathascordeiro20/openinfra-logger');
+
+// Transforms `level` -> `status` and `trace_id` -> `dd.trace_id`
+configure({ formatter: 'datadog' });
+
+// Or for Elastic Common Schema (ECS):
+// configure({ formatter: 'elastic' }); // Transforms `timestamp` -> `@timestamp`
+```
+
 ## Roadmap
 
 Our vision is to become the standard logging infrastructure across diverse modern tech stacks.
@@ -69,8 +81,8 @@ Our vision is to become the standard logging infrastructure across diverse moder
 - [x] Node.js core implementation (Console, File, Remote Transports)
 - [x] Native OpenTelemetry Tracing integration (traceId injection)
 - [x] Support for Python
+- [x] Seamless Integrations with Grafana, Datadog, ELK stack
 - [ ] Support for Rust and Go
-- [ ] Seamless Integrations with Grafana, Datadog, ELK stack
 - [ ] AI-powered log analysis and anomaly detection
 
 ## License

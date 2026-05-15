@@ -10,7 +10,8 @@ _config = {
     'file_path': './app.log',
     'remote_url': None,
     'remote_headers': {'Content-Type': 'application/json'},
-    'default_metadata': {}
+    'default_metadata': {},
+    'formatter': 'default' # 'default', 'datadog', 'elastic'
 }
 
 _logger = logging.getLogger("openinfra_logger")
@@ -49,18 +50,16 @@ def extract_trace_context():
         pass
     return {}
 
-def _dispatch(log_entry):
+def _dispatch(log_entry, original_level):
     output = json.dumps(log_entry)
 
-    level_name = log_entry.get('level', 'info')
-    
     # 1. Console transport
     if 'console' in _config['transports']:
-        if level_name == 'error':
+        if original_level == 'error':
             _logger.error(output)
-        elif level_name == 'warn':
+        elif original_level == 'warn':
             _logger.warning(output)
-        elif level_name == 'debug':
+        elif original_level == 'debug':
             _logger.debug(output)
         else:
             _logger.info(output)
@@ -127,4 +126,14 @@ def log(message: str, level: str = 'info', metadata: dict = None):
     log_entry.update(trace_context)
     log_entry.update(metadata)
 
-    _dispatch(log_entry)
+    if _config['formatter'] == 'datadog':
+        log_entry['status'] = log_entry.pop('level', 'info')
+        if 'trace_id' in log_entry:
+            log_entry['dd.trace_id'] = log_entry.pop('trace_id')
+        if 'span_id' in log_entry:
+            log_entry['dd.span_id'] = log_entry.pop('span_id')
+    elif _config['formatter'] == 'elastic':
+        log_entry['@timestamp'] = log_entry.pop('timestamp')
+        log_entry['log.level'] = log_entry.pop('level', 'info')
+
+    _dispatch(log_entry, normalized_level)

@@ -17,7 +17,8 @@ let config = {
   filePath: './app.log',
   remoteUrl: null,
   remoteHeaders: { 'Content-Type': 'application/json' },
-  defaultMetadata: {}
+  defaultMetadata: {},
+  formatter: 'default' // 'default', 'datadog', 'elastic'
 };
 
 /**
@@ -54,13 +55,13 @@ function extractTraceContext() {
 /**
  * Internal function to dispatch log to configured transports.
  */
-function dispatch(logEntry) {
+function dispatch(logEntry, originalLevel) {
   const output = JSON.stringify(logEntry);
 
   if (config.transports.includes('console')) {
-    if (logEntry.level === 'error') console.error(output);
-    else if (logEntry.level === 'warn') console.warn(output);
-    else if (logEntry.level === 'debug') console.debug(output);
+    if (originalLevel === 'error') console.error(output);
+    else if (originalLevel === 'warn') console.warn(output);
+    else if (originalLevel === 'debug') console.debug(output);
     else console.log(output);
   }
 
@@ -102,7 +103,7 @@ function log(message, level = 'info', metadata = {}) {
   }
 
   // Inject default metadata and OpenTelemetry traceId if present
-  const logEntry = {
+  let logEntry = {
     timestamp: new Date().toISOString(),
     level: normalizedLevel,
     message,
@@ -111,7 +112,26 @@ function log(message, level = 'info', metadata = {}) {
     ...metadata
   };
 
-  dispatch(logEntry);
+  // Apply ecosystem-specific formatters
+  if (config.formatter === 'datadog') {
+    logEntry.status = logEntry.level;
+    delete logEntry.level;
+    if (logEntry.trace_id) {
+      logEntry['dd.trace_id'] = logEntry.trace_id;
+      delete logEntry.trace_id;
+    }
+    if (logEntry.span_id) {
+      logEntry['dd.span_id'] = logEntry.span_id;
+      delete logEntry.span_id;
+    }
+  } else if (config.formatter === 'elastic') {
+    logEntry['@timestamp'] = logEntry.timestamp;
+    delete logEntry.timestamp;
+    logEntry['log.level'] = logEntry.level;
+    delete logEntry.level;
+  }
+
+  dispatch(logEntry, normalizedLevel);
 }
 
 module.exports = { log, configure, LEVELS };
