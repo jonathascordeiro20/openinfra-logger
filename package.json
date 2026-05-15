@@ -17,7 +17,7 @@
     "structured-logging",
     "opentelemetry"
   ],
-  "author": "Jonathas",
+  "author": "Jonathas Cordeiro (https://github.com/jonathascordeiro20)",
   "license": "MIT",
   "repository": {
     "type": "git",

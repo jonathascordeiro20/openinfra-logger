@@ -1,3 +1,11 @@
+/*
+ * OpenInfra Logger
+ * Critical infrastructure library for structured observability.
+ *
+ * @author Jonathas Cordeiro (@jonathascordeiro20)
+ * @license MIT
+ * @copyright (c) 2026 Jonathas Cordeiro
+ */
 use std::collections::HashMap;
 use std::fs::OpenOptions;
 use std::io::Write;

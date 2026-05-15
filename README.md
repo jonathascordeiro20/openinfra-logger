@@ -97,3 +97,9 @@ npm run analyze app.log
 ## License
 
 This project is licensed under the [MIT License](LICENSE). Please review our [Code of Conduct](CODE_OF_CONDUCT.md) and [Contributing Guidelines](CONTRIBUTING.md) before submitting PRs.
+
+---
+<div align="center">
+  <b>Built with ❤️ by <a href="https://github.com/jonathascordeiro20">Jonathas Cordeiro</a></b><br>
+  <i>An open source initiative for modern infrastructure observability.</i>
+</div>
