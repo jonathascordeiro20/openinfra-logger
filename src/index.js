@@ -29,6 +29,29 @@ function configure(newConfig = {}) {
 }
 
 /**
+ * Attempt to extract trace context if OpenTelemetry is active.
+ * Zero-dependency check.
+ */
+function extractTraceContext() {
+  try {
+    const opentelemetry = require('@opentelemetry/api');
+    const span = opentelemetry.trace.getActiveSpan();
+    if (span) {
+      const spanContext = span.spanContext();
+      if (opentelemetry.trace.isSpanContextValid(spanContext)) {
+        return {
+          trace_id: spanContext.traceId,
+          span_id: spanContext.spanId
+        };
+      }
+    }
+  } catch (e) {
+    // OpenTelemetry API not installed or active, ignore safely
+  }
+  return {};
+}
+
+/**
  * Internal function to dispatch log to configured transports.
  */
 function dispatch(logEntry) {
@@ -78,12 +101,13 @@ function log(message, level = 'info', metadata = {}) {
     level = 'info';
   }
 
-  // Inject default metadata and future integration points (e.g., OpenTelemetry traceId)
+  // Inject default metadata and OpenTelemetry traceId if present
   const logEntry = {
     timestamp: new Date().toISOString(),
     level: normalizedLevel,
     message,
     ...config.defaultMetadata,
+    ...extractTraceContext(),
     ...metadata
   };
 

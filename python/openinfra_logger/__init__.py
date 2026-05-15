@@ -30,6 +30,25 @@ def configure(**kwargs):
     """
     _config.update(kwargs)
 
+def extract_trace_context():
+    """
+    Attempt to extract trace context if OpenTelemetry is active.
+    Zero-dependency check.
+    """
+    try:
+        import opentelemetry.trace
+        span = opentelemetry.trace.get_current_span()
+        if span and span.is_recording():
+            ctx = span.get_span_context()
+            if ctx.is_valid:
+                return {
+                    'trace_id': format(ctx.trace_id, "032x"),
+                    'span_id': format(ctx.span_id, "016x")
+                }
+    except ImportError:
+        pass
+    return {}
+
 def _dispatch(log_entry):
     output = json.dumps(log_entry)
 
@@ -101,8 +120,11 @@ def log(message: str, level: str = 'info', metadata: dict = None):
         "message": message,
     }
     
-    # Merge default metadata and specific metadata
+    trace_context = extract_trace_context()
+
+    # Merge default metadata, trace context, and specific metadata
     log_entry.update(_config['default_metadata'])
+    log_entry.update(trace_context)
     log_entry.update(metadata)
 
     _dispatch(log_entry)

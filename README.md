@@ -48,12 +48,26 @@ log('Payment processed', 'info', { transactionId: 'abc-456' });
 Check out the `examples/` directory for [Express Integration](examples/express-integration.js) and [Security Logging](examples/security-logging.js).
 Read our [Advanced Configuration Guide](docs/advanced-configuration.md) for more capabilities.
 
+### OpenTelemetry Tracing
+**OpenInfra Logger** automatically detects if an OpenTelemetry trace context is active in your environment (both in Node.js and Python) and silently extracts the `trace_id` and `span_id`, injecting them into the JSON log payload with **zero configuration required**.
+```javascript
+const { trace } = require('@opentelemetry/api');
+const { log } = require('@jonathascordeiro20/openinfra-logger');
+
+const tracer = trace.getTracer('demo');
+tracer.startActiveSpan('auth-request', (span) => {
+  // Output JSON will magically contain "trace_id": "..." and "span_id": "..."
+  log('User successfully authenticated'); 
+  span.end();
+});
+```
+
 ## Roadmap
 
 Our vision is to become the standard logging infrastructure across diverse modern tech stacks.
 
 - [x] Node.js core implementation (Console, File, Remote Transports)
-- [ ] Native OpenTelemetry Tracing integration (traceId injection)
+- [x] Native OpenTelemetry Tracing integration (traceId injection)
 - [x] Support for Python
 - [ ] Support for Rust and Go
 - [ ] Seamless Integrations with Grafana, Datadog, ELK stack
