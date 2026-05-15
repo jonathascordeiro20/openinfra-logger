@@ -1,0 +1,23 @@
+{
+  "name": "openinfra-logger",
+  "version": "0.1.0",
+  "description": "Critical structured logging and observability library for modern infrastructure",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "echo \"No tests yet\""
+  },
+  "keywords": [
+    "logger",
+    "logging",
+    "observability",
+    "infrastructure",
+    "structured-logging",
+    "opentelemetry"
+  ],
+  "author": "Jonathas",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jonathascordeiro20/openinfra-logger.git"
+  }
+}
