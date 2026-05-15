@@ -2,6 +2,7 @@
  * OpenInfra Logger
  * Critical infrastructure library for structured observability.
  */
+const fs = require('fs');
 
 const LEVELS = {
   debug: 10,
@@ -9,6 +10,55 @@ const LEVELS = {
   warn: 30,
   error: 40,
 };
+
+// Default configuration
+let config = {
+  transports: ['console'], // console, file, remote
+  filePath: './app.log',
+  remoteUrl: null,
+  remoteHeaders: { 'Content-Type': 'application/json' },
+  defaultMetadata: {}
+};
+
+/**
+ * Configure the logger transports and defaults.
+ * @param {object} newConfig - Configuration overrides
+ */
+function configure(newConfig = {}) {
+  config = { ...config, ...newConfig };
+}
+
+/**
+ * Internal function to dispatch log to configured transports.
+ */
+function dispatch(logEntry) {
+  const output = JSON.stringify(logEntry);
+
+  if (config.transports.includes('console')) {
+    if (logEntry.level === 'error') console.error(output);
+    else if (logEntry.level === 'warn') console.warn(output);
+    else if (logEntry.level === 'debug') console.debug(output);
+    else console.log(output);
+  }
+
+  if (config.transports.includes('file') && config.filePath) {
+    fs.appendFile(config.filePath, output + '\n', (err) => {
+      if (err) console.error('OpenInfra Logger: Failed to write to log file', err);
+    });
+  }
+
+  if (config.transports.includes('remote') && config.remoteUrl && typeof fetch !== 'undefined') {
+    // Fire and forget remote logging
+    fetch(config.remoteUrl, {
+      method: 'POST',
+      headers: config.remoteHeaders,
+      body: output
+    }).catch(err => {
+      // Avoid circular logging loops, just output to native console.error
+      console.error('OpenInfra Logger: Failed to send remote log', err.message);
+    });
+  }
+}
 
 /**
  * Emits a structured JSON log.
@@ -28,25 +78,16 @@ function log(message, level = 'info', metadata = {}) {
     level = 'info';
   }
 
-  // TODO: Future integration point for OpenTelemetry traceId and spanId injection
+  // Inject default metadata and future integration points (e.g., OpenTelemetry traceId)
   const logEntry = {
     timestamp: new Date().toISOString(),
     level: normalizedLevel,
     message,
+    ...config.defaultMetadata,
     ...metadata
   };
 
-  const output = JSON.stringify(logEntry);
-
-  if (normalizedLevel === 'error') {
-    console.error(output);
-  } else if (normalizedLevel === 'warn') {
-    console.warn(output);
-  } else if (normalizedLevel === 'debug') {
-    console.debug(output);
-  } else {
-    console.log(output);
-  }
+  dispatch(logEntry);
 }
 
-module.exports = { log, LEVELS };
+module.exports = { log, configure, LEVELS };

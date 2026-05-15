@@ -6,11 +6,11 @@
 
 ## Ecosystem Impact & Criticality
 
-In the landscape of modern distributed systems, logging is not merely an auxiliary feature; it is foundational infrastructure. Without structured, reliable, and standardized logging, applications operate blindly, making it impossible to detect security breaches, diagnose performance bottlenecks, or understand system behavior at scale. 
+In the landscape of modern distributed systems, logging is not merely an auxiliary feature; it is foundational, invisible infrastructure. Without structured, reliable, and standardized logging, applications operate blindly. **OpenInfra Logger** provides the critical observability backbone required by high-stakes environments—such as **Fintechs**, **E-commerce platforms**, and enterprise **SaaS** solutions—making it possible to detect security breaches, diagnose performance bottlenecks, and understand system behavior at scale.
 
-**OpenInfra Logger** addresses this by providing:
+**OpenInfra Logger** addresses ecosystem fragmentation by providing:
 - **Consistent Observability**: A unified structured JSON format across Node.js and Python, eliminating parsing complexities.
-- **Reliability at Scale**: Built to be lightweight with minimal overhead, ensuring zero impact on application performance.
+- **Reliability at Scale**: Built to be lightweight with minimal overhead, supporting Console, File, and Remote transports.
 - **Future-Proofing**: Designed from the ground up for seamless integration with standards like OpenTelemetry.
 
 ## Installation
@@ -18,30 +18,47 @@ In the landscape of modern distributed systems, logging is not merely an auxilia
 ```bash
 npm install openinfra-logger
 ```
+For more details, see our [Installation Guide](docs/installation.md).
 
 ## Usage
 
+### Basic Console Logging
 ```javascript
 const { log } = require('openinfra-logger');
 
-// Standard log levels
 log('System initialized successfully', 'info');
-log('Database connection retry attempt 1', 'warn');
-log('Failed to parse incoming payload', 'error');
-log('Detailed payload metrics', 'debug');
+log('Failed to parse incoming payload', 'error', { requestId: '123' });
 ```
+
+### Advanced Configuration (File & Remote Transports)
+```javascript
+const { log, configure } = require('openinfra-logger');
+
+// Configure the logger to write to a file and send to an aggregator
+configure({
+  transports: ['console', 'file', 'remote'],
+  filePath: './production.log',
+  remoteUrl: 'https://logs.my-infrastructure.com/ingest',
+  defaultMetadata: { service: 'payment-gateway', env: 'production' }
+});
+
+log('Payment processed', 'info', { transactionId: 'abc-456' });
+```
+
+Check out the `examples/` directory for [Express Integration](examples/express-integration.js) and [Security Logging](examples/security-logging.js).
+Read our [Advanced Configuration Guide](docs/advanced-configuration.md) for more capabilities.
 
 ## Roadmap
 
 Our vision is to become the standard logging infrastructure across diverse modern tech stacks.
 
-- [x] Node.js core implementation
+- [x] Node.js core implementation (Console, File, Remote Transports)
+- [ ] Native OpenTelemetry Tracing integration (traceId injection)
 - [ ] Support for Python
 - [ ] Support for Rust and Go
 - [ ] Seamless Integrations with Grafana, Datadog, ELK stack
 - [ ] AI-powered log analysis and anomaly detection
-- [ ] Native OpenTelemetry Tracing integration
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
+This project is licensed under the [MIT License](LICENSE). Please review our [Code of Conduct](CODE_OF_CONDUCT.md) and [Contributing Guidelines](CONTRIBUTING.md) before submitting PRs.

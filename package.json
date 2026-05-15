@@ -4,7 +4,9 @@
   "description": "Critical structured logging and observability library for modern infrastructure",
   "main": "src/index.js",
   "scripts": {
-    "test": "echo \"No tests yet\""
+    "test": "echo \"No tests specified yet. Add test framework (e.g. Jest) here.\" && exit 0",
+    "lint": "echo \"Linting not configured yet. Add ESLint here.\" && exit 0",
+    "build": "echo \"No build step required for Node.js core library.\" && exit 0"
   },
   "keywords": [
     "logger",
@@ -19,5 +21,8 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/jonathascordeiro20/openinfra-logger.git"
+  },
+  "devDependencies": {
+    "express": "^4.18.2"
   }
 }
