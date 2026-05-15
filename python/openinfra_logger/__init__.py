@@ -1,0 +1,108 @@
+import json
+import logging
+import datetime
+import urllib.request
+import urllib.error
+
+# Internal configuration
+_config = {
+    'transports': ['console'], # console, file, remote
+    'file_path': './app.log',
+    'remote_url': None,
+    'remote_headers': {'Content-Type': 'application/json'},
+    'default_metadata': {}
+}
+
+_logger = logging.getLogger("openinfra_logger")
+_logger.setLevel(logging.DEBUG)
+# Disable default propagation so we can handle outputs cleanly
+_logger.propagate = False
+
+# Ensure we have a stream handler for console transport
+if not _logger.handlers:
+    _console_handler = logging.StreamHandler()
+    _console_handler.setFormatter(logging.Formatter('%(message)s'))
+    _logger.addHandler(_console_handler)
+
+def configure(**kwargs):
+    """
+    Configure the logger transports and defaults.
+    """
+    _config.update(kwargs)
+
+def _dispatch(log_entry):
+    output = json.dumps(log_entry)
+
+    level_name = log_entry.get('level', 'info')
+    
+    # 1. Console transport
+    if 'console' in _config['transports']:
+        if level_name == 'error':
+            _logger.error(output)
+        elif level_name == 'warn':
+            _logger.warning(output)
+        elif level_name == 'debug':
+            _logger.debug(output)
+        else:
+            _logger.info(output)
+
+    # 2. File transport
+    if 'file' in _config['transports'] and _config.get('file_path'):
+        try:
+            with open(_config['file_path'], 'a') as f:
+                f.write(output + '\n')
+        except Exception as e:
+            _logger.error(json.dumps({
+                "level": "error",
+                "message": f"OpenInfra Logger: Failed to write to log file: {str(e)}",
+                "timestamp": datetime.datetime.utcnow().isoformat() + "Z"
+            }))
+
+    # 3. Remote transport
+    if 'remote' in _config['transports'] and _config.get('remote_url'):
+        try:
+            req = urllib.request.Request(
+                _config['remote_url'], 
+                data=output.encode('utf-8'), 
+                headers=_config['remote_headers'],
+                method='POST'
+            )
+            # Fire and forget with a short timeout to prevent blocking
+            urllib.request.urlopen(req, timeout=2.0)
+        except Exception as e:
+            _logger.error(json.dumps({
+                "level": "error",
+                "message": f"OpenInfra Logger: Failed to send remote log: {str(e)}",
+                "timestamp": datetime.datetime.utcnow().isoformat() + "Z"
+            }))
+
+
+def log(message: str, level: str = 'info', metadata: dict = None):
+    """
+    Emits a structured JSON log.
+    """
+    if metadata is None:
+        metadata = {}
+        
+    normalized_level = level.lower()
+    valid_levels = {'debug', 'info', 'warn', 'error'}
+    
+    if normalized_level not in valid_levels:
+        _logger.warning(json.dumps({
+            "level": "warn",
+            "message": f"Invalid log level '{level}' provided, falling back to 'info'",
+            "timestamp": datetime.datetime.utcnow().isoformat() + "Z"
+        }))
+        normalized_level = 'info'
+
+    log_entry = {
+        "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
+        "level": normalized_level,
+        "message": message,
+    }
+    
+    # Merge default metadata and specific metadata
+    log_entry.update(_config['default_metadata'])
+    log_entry.update(metadata)
+
+    _dispatch(log_entry)

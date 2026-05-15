@@ -54,7 +54,7 @@ Our vision is to become the standard logging infrastructure across diverse moder
 
 - [x] Node.js core implementation (Console, File, Remote Transports)
 - [ ] Native OpenTelemetry Tracing integration (traceId injection)
-- [ ] Support for Python
+- [x] Support for Python
 - [ ] Support for Rust and Go
 - [ ] Seamless Integrations with Grafana, Datadog, ELK stack
 - [ ] AI-powered log analysis and anomaly detection
