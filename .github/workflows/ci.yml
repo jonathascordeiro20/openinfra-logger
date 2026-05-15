@@ -26,10 +26,12 @@ jobs:
     - name: Install Node dependencies
       run: npm install
 
-    - name: Run Node.js Tests (Placeholder)
+    - name: Run Node.js Tests
       run: |
         npm run test
-        npm run lint
+
+    - name: Run Python Tests
+      run: python -m unittest discover -s python/tests
 
     - name: Verify Security Logging Example
       run: node examples/security-logging.js
