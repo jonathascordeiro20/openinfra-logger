@@ -2,29 +2,29 @@
 
 [← back to manual index](README.md)
 
-## Em uma frase
+## In one sentence
 
-OpenInfra Logger emite **um JSON estruturado idêntico em Node.js, Python, Go e Rust**, sem nenhuma dependência externa em nenhuma das quatro implementações.
+OpenInfra Logger emits **a single structured JSON shape across Node.js, Python, Go, and Rust**, with no external dependencies in any of the four implementations.
 
-## Para quem foi feito
+## Who it's for
 
-- **Times poliglotas** que rodam serviços em duas ou mais das quatro linguagens e perdem horas em incidentes alinhando schemas no Datadog ou Elastic.
-- **SREs** que querem um shape canônico que entre direto em qualquer pipeline (file → fluent-bit → Loki, ou stdout → Datadog agent, etc) sem transformadores no caminho.
-- **Aplicações regidas por LGPD / GDPR** que precisam garantir que `password`, `token`, `api_key`, `secret` e `credit_card` **nunca** saiam do processo sem redação.
-- **Quem cansou de seu logger trazer 30 transitive deps** e prefere uma superfície menor para manter e auditar.
+- **Polyglot teams** that run services in two or more of the four languages and lose hours during incidents lining up schemas in Datadog or Elastic.
+- **SREs** who want a canonical shape that drops straight into any pipeline (file → fluent-bit → Loki, or stdout → Datadog agent, etc.) without transformers in the way.
+- **Applications subject to LGPD / GDPR** that need to guarantee `password`, `token`, `api_key`, `secret`, and `credit_card` **never** leave the process unredacted.
+- **People tired of their logger pulling in 30 transitive deps** who prefer a smaller surface to maintain and audit.
 
-## Para quem **não** foi feito
+## Who it's **not** for
 
-- **Aplicações que precisam de 100k+ eventos/segundo/processo no Node** — o Pino continua sendo o caminho. OIL está em ~10k eventos/s/proc no default config, suficiente para ~99% das APIs, insuficiente para data pipelines síncronos.
-- **Quem precisa de output bonito colorizado em dev** — saída é JSON, ponto. Faça pipe pra `jq -C` se quiser cor.
-- **Quem precisa de redação por valor (e não por nome de campo)** — a v0.1 redacta por key name. Detecção semântica (regex em valores) está no roadmap.
-- **Quem quer um backend** — OIL é cliente. Você precisa de Datadog, Elastic, Loki, CloudWatch ou outro lugar para receber.
+- **Apps that need 100k+ events/second/process in Node** — Pino is still the answer. OIL sits around 10k events/s/proc in the default config — enough for ~99% of APIs, not enough for synchronous data pipelines.
+- **Anyone who needs pretty colorized dev output** — output is JSON, period. Pipe to `jq -C` if you want color.
+- **Anyone who needs redaction by value (not by field name)** — v0.1 redacts by key name. Semantic detection (regex on values) is on the roadmap.
+- **Anyone who wants a backend** — OIL is a client. You still need Datadog, Elastic, Loki, CloudWatch, or somewhere to receive logs.
 
-## O que entrega na v0.1.0
+## What v0.1.0 delivers
 
-| Capacidade | Node | Python | Go | Rust |
+| Capability | Node | Python | Go | Rust |
 |---|---|---|---|---|
-| JSON estruturado | ✓ | ✓ | ✓ | ✓ |
+| Structured JSON | ✓ | ✓ | ✓ | ✓ |
 | Console transport | ✓ | ✓ | ✓ | ✓ |
 | File transport | ✓ ordered | ✓ | ✓ | ✓ |
 | Remote HTTP transport | ✓ batched | ✓ batched | ✓ fire-and-forget | — |
@@ -34,9 +34,9 @@ OpenInfra Logger emite **um JSON estruturado idêntico em Node.js, Python, Go e 
 | OpenTelemetry injection | ✓ auto | ✓ auto | — | — |
 | Log analyzer CLI | ✓ via npm script (works on logs from any runtime) |
 
-Os marcadores "—" são gaps documentados de v0.1.0 e estão no roadmap da v0.2.
+The "—" markers are documented gaps in v0.1.0 and are on the v0.2 roadmap.
 
-## O contrato canônico do JSON
+## The canonical JSON contract
 
 ```json
 {
@@ -51,21 +51,21 @@ Os marcadores "—" são gaps documentados de v0.1.0 e estão no roadmap da v0.2
 }
 ```
 
-Toda implementação emite essa forma. Mais detalhes em [02 · Conceitos](02-concepts.md).
+Every implementation emits this shape. More detail in [02 · Concepts](02-concepts.md).
 
-## O que torna esse projeto **diferente**
+## What makes this project **different**
 
-- **Mesmo JSON em quatro linguagens.** Não "compatível" — idêntico. Você pode parsear logs do worker em Go e do front-end Node com o mesmo schema.
-- **Zero deps de package manager.** Nenhum `npm install` baixa outra coisa; nenhum `pip install` traz transitivos. Cada implementação usa apenas a stdlib da linguagem.
-- **Redaction antes do transport.** Outras libs redactam na borda (no fluentd, no agente). OIL redacta dentro do processo, antes de qualquer escrita. Logs em disco já saem redatados.
-- **Triagem local antes da IA.** O analyzer roda 7 camadas de análise (clusters, heurísticas, cascatas, anomalias) sem network. A IA é opt-in explícito, e três providers são suportados: Anthropic (cloud), Ollama (local), OpenAI (compatible).
+- **Same JSON across four languages.** Not "compatible" — identical. You can parse logs from a Go worker and a Node front-end with the same schema.
+- **Zero package-manager deps.** No `npm install` pulls anything else; no `pip install` brings transitive deps. Each implementation uses only the language's stdlib.
+- **Redaction before the transport.** Other libs redact at the edge (in fluentd, in the agent). OIL redacts inside the process, before any write. Logs on disk are already redacted.
+- **Local triage before the AI.** The analyzer runs 7 layers of analysis (clusters, heuristics, cascades, anomalies) with no network call. AI is explicit opt-in, and three providers are supported: Anthropic (cloud), Ollama (local), OpenAI-compatible.
 
-## O que pode estar fora de escopo (para sempre)
+## What may stay out of scope (forever)
 
-- **Multi-tenant log routing**, **structured tracing primitives**, **metrics emission** — outros projetos (OpenTelemetry SDK, Prometheus client) fazem isso melhor. OIL faz logs.
-- **Pretty printers / TUI** — JSON in, JSON out. Use `jq`, `pino-pretty`, `bunyan`, ou qualquer outro pretty-printer no consumo.
-- **Persistent buffer / disk WAL** — se você precisa garantir que nenhum log se perde quando o processo morre, use um shipper dedicado (Vector, fluent-bit) entre o processo e o backend.
+- **Multi-tenant log routing**, **structured tracing primitives**, **metrics emission** — other projects (OpenTelemetry SDK, Prometheus client) do those better. OIL does logs.
+- **Pretty printers / TUI** — JSON in, JSON out. Use `jq`, `pino-pretty`, `bunyan`, or any other pretty-printer at consumption time.
+- **Persistent buffer / disk WAL** — if you need a guarantee that no log is lost when the process dies, use a dedicated shipper (Vector, fluent-bit) between the process and the backend.
 
-## Próximo passo
+## Next
 
-→ [02 · Conceitos](02-concepts.md) — entenda o contrato JSON, a arquitetura e por que a "zero deps" parou onde parou.
+→ [02 · Concepts](02-concepts.md) — understand the JSON contract, the architecture, and where the "zero deps" claim stops.

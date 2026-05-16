@@ -1,8 +1,8 @@
-# 03 · Instalação
+# 03 · Installation
 
 [← back to manual index](README.md)
 
-## Comando exato por runtime
+## Exact command per runtime
 
 ### Node.js (≥ 16)
 
@@ -14,7 +14,7 @@ yarn add @jonathascordeiro20/openinfra-logger
 pnpm add @jonathascordeiro20/openinfra-logger
 ```
 
-Verificação:
+Verify:
 
 ```bash
 node -e "const { log } = require('@jonathascordeiro20/openinfra-logger'); log('install ok', 'info', { check: true })"
@@ -27,13 +27,13 @@ node -e "const { log } = require('@jonathascordeiro20/openinfra-logger'); log('i
 pip install openinfra-logger
 ```
 
-Com OpenTelemetry opcional (necessário se você quer que `trace_id`/`span_id` sejam detectados automaticamente):
+With optional OpenTelemetry support (required if you want `trace_id`/`span_id` auto-injected):
 
 ```bash
 pip install "openinfra-logger[opentelemetry]"
 ```
 
-Verificação:
+Verify:
 
 ```bash
 python -c "from openinfra_logger import log; log('install ok', 'info', {'check': True})"
@@ -46,9 +46,9 @@ python -c "from openinfra_logger import log; log('install ok', 'info', {'check':
 go get github.com/jonathascordeiro20/openinfra-logger/go@v0.1.0
 ```
 
-> **Importante (módulo em subpath):** porque o package vive em `/go/`, a tag publicada é `go/v0.1.0`, não apenas `v0.1.0`. Use o módulo path completo (`.../openinfra-logger/go`) e a tag funciona corretamente.
+> **Important (module in subpath):** because the package lives under `/go/`, the published tag is `go/v0.1.0`, not just `v0.1.0`. Use the full module path (`.../openinfra-logger/go`) and the tag resolves correctly.
 
-Verificação:
+Verify:
 
 ```bash
 cat > /tmp/check.go <<'EOF'
@@ -70,7 +70,7 @@ cd /tmp && go mod init check && go mod tidy && go run check.go
 openinfra-logger = "0.1"
 ```
 
-Verificação:
+Verify:
 
 ```rust
 use openinfra_logger::{Logger, Config};
@@ -84,35 +84,35 @@ fn main() {
 }
 ```
 
-## Quando algum dos passos falha
+## When one of the steps fails
 
-| Sintoma | Provável causa | Correção |
+| Symptom | Likely cause | Fix |
 |---|---|---|
-| `npm install ... E404` | escopo errado no nome | Confira o `@jonathascordeiro20/` no início |
-| `pip install ... could not find a version` | pip muito antigo (< 21) | `python -m pip install --upgrade pip` |
-| `go get ... unknown revision v0.1.0` | tag de subpath ausente | Use `@v0.1.0` (não `@latest`) e o path com `/go` no fim |
-| `cargo add` falha por `name has been claimed` | seu Cargo está olhando um registry alternativo | `cargo add openinfra-logger --registry crates-io` |
-| Compilação Rust falha por `edition = "2021"` | toolchain < 1.56 | `rustup update` |
+| `npm install ... E404` | wrong scope in the name | Verify the `@jonathascordeiro20/` prefix |
+| `pip install ... could not find a version` | pip too old (< 21) | `python -m pip install --upgrade pip` |
+| `go get ... unknown revision v0.1.0` | missing subpath tag | Use `@v0.1.0` (not `@latest`) and the path ending in `/go` |
+| `cargo add` fails with "name has been claimed" | your Cargo is targeting an alternate registry | `cargo add openinfra-logger --registry crates-io` |
+| Rust compile fails on `edition = "2021"` | toolchain < 1.56 | `rustup update` |
 
-## Versões mínimas e a matriz de CI
+## Minimum versions and CI matrix
 
-| Runtime | Mínima suportada | Última testada em CI |
+| Runtime | Minimum supported | Latest tested in CI |
 |---|---|---|
 | Node.js | 16 | 24 |
 | Python | 3.8 | 3.12 |
 | Go | 1.20 | 1.26 |
 | Rust | 1.70 | 1.95 |
 
-Versões mais antigas podem funcionar mas não recebem atenção. Versões mais novas costumam ser cobertas em até 1–2 releases após o lançamento.
+Older versions may work but receive no attention. Newer versions are usually covered within 1–2 releases.
 
-## Onde a lib **não** roda (ainda)
+## Where the library does **not** run (yet)
 
-- **Bun** — funciona via shims de Node API, mas não é parte da matriz de CI. Reports são bem-vindos.
-- **Deno** — não testado. Em teoria o subset de `node:fs` que usamos funciona em Deno 1.40+.
-- **Cloudflare Workers / Edge** — não funciona: dependemos de `fs.appendFile` para o file transport. Em Workers, use só `console` + `remote`. Issue [aceita PRs](https://github.com/jonathascordeiro20/openinfra-logger/issues) para um build edge-only.
-- **WASM** — Rust crate funciona em `wasm32-wasi` exceto pelo file transport.
+- **Bun** — works via Node API shims, but it's not part of the CI matrix. Reports are welcome.
+- **Deno** — untested. In theory the subset of `node:fs` we use works in Deno 1.40+.
+- **Cloudflare Workers / Edge** — does not work: we depend on `fs.appendFile` for the file transport. In Workers, use only `console` + `remote`. [PRs welcome](https://github.com/jonathascordeiro20/openinfra-logger/issues) for an edge-only build.
+- **WASM** — the Rust crate works on `wasm32-wasi` except for the file transport.
 
-## Desinstalar
+## Uninstall
 
 ```bash
 npm uninstall @jonathascordeiro20/openinfra-logger
@@ -121,6 +121,6 @@ cargo remove openinfra-logger
 go mod edit -droprequire github.com/jonathascordeiro20/openinfra-logger/go && go mod tidy
 ```
 
-## Próximo passo
+## Next
 
-→ [04 · Configuração](04-configuration.md) — todos os campos do `configure()` por runtime, com defaults e gotchas.
+→ [04 · Configuration](04-configuration.md) — every field of `configure()` per runtime, with defaults and gotchas.

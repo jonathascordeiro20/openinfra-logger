@@ -2,7 +2,7 @@
 
 [← back to manual index](README.md)
 
-Assinaturas completas e exatas das APIs públicas, por runtime, em v0.1.0.
+Complete and exact signatures of the public APIs, per runtime, for v0.1.0.
 
 ## Node.js
 
@@ -16,13 +16,13 @@ const { log, configure, LEVELS } = require('@jonathascordeiro20/openinfra-logger
 log(message: string, level?: string, metadata?: object): void
 ```
 
-| Parâmetro | Tipo | Default | Comportamento |
+| Parameter | Type | Default | Behavior |
 |---|---|---|---|
-| `message` | `string` | — | Obrigatório. Texto livre, **não** é redatado |
-| `level` | `string` | `'info'` | `debug`/`info`/`warn`/`error` (case-insensitive). Outros viram `info` |
-| `metadata` | `object` | `{}` | Campos arbitrários JSON-serializable. Redaction aplicada recursivamente |
+| `message` | `string` | — | Required. Free text, **not** redacted |
+| `level` | `string` | `'info'` | `debug`/`info`/`warn`/`error` (case-insensitive). Others become `info` |
+| `metadata` | `object` | `{}` | Arbitrary JSON-serializable fields. Redaction applied recursively |
 
-Não retorna. Não lança em fluxo normal — erros internos vão para `console.error` e o processo continua.
+Returns nothing. Does not throw in normal flow — internal errors go to `console.error` and the process continues.
 
 ### `configure(options)`
 
@@ -46,7 +46,7 @@ configure(options: Partial<Options>): void
 }
 ```
 
-Semântica: **merge** com config anterior. Você pode chamar várias vezes; apenas campos passados mudam.
+Semantics: **merge** with the previous config. You can call it multiple times; only fields you pass change.
 
 ### `LEVELS`
 
@@ -55,7 +55,7 @@ const { LEVELS } = require('@jonathascordeiro20/openinfra-logger');
 // LEVELS === { debug: 10, info: 20, warn: 30, error: 40 }
 ```
 
-Útil para comparações numéricas se você quiser filtrar consumindo. OIL **não filtra** internamente.
+Useful for numeric comparisons if you want to filter at consumption time. OIL **does not filter** internally.
 
 ## Python
 
@@ -69,11 +69,11 @@ from openinfra_logger import log, configure, redact_object
 log(message: str, level: str = 'info', metadata: dict | None = None) -> None
 ```
 
-Idêntico ao Node em semântica. `metadata=None` é tratado como `{}` — você pode omitir.
+Identical to Node in semantics. `metadata=None` is treated as `{}` — you can omit it.
 
 ### `configure(**kwargs)`
 
-Argumentos keyword-only (snake_case):
+Keyword-only arguments (snake_case):
 
 ```
 configure(
@@ -89,7 +89,7 @@ configure(
 )
 ```
 
-Defaults idênticos ao Node. Merge via `dict.update`.
+Defaults identical to Node. Merge via `dict.update`.
 
 ### `redact_object(obj, keys_to_redact)`
 
@@ -97,7 +97,7 @@ Defaults idênticos ao Node. Merge via `dict.update`.
 redact_object(obj: Any, keys_to_redact: list[str]) -> Any
 ```
 
-A função pura de redação, exposta para testes e uso direto. Não é chamada por você no fluxo normal.
+The pure redaction function, exposed for tests and direct use. You don't call it in the normal flow.
 
 ## Go
 
@@ -111,11 +111,11 @@ import openinfralogger "github.com/jonathascordeiro20/openinfra-logger/go"
 openinfralogger.Log(
     message string,
     level string,
-    metadata map[string]interface{},  // pode ser nil
+    metadata map[string]interface{},  // may be nil
 )
 ```
 
-Sem retorno. Erros internos vão para `log.Printf` em stderr.
+No return value. Internal errors go to `log.Printf` on stderr.
 
 ### `func Configure(cfg Config)`
 
@@ -130,9 +130,9 @@ type Config struct {
 }
 ```
 
-**Atenção:** `Configure` substitui o struct inteiro. Sempre passe **todos** os campos que você quer manter. Campos zero-value (`""`, `nil`) sobrescrevem os defaults.
+**Heads up:** `Configure` replaces the whole struct. Always pass **every** field you want to keep. Zero-value fields (`""`, `nil`) overwrite the defaults.
 
-Não há `RedactKeys`, `BatchSize`, `FlushIntervalMs` ainda na implementação Go — chegam em v0.2.
+`RedactKeys`, `BatchSize`, `FlushIntervalMs` are not yet in the Go implementation — they land in v0.2.
 
 ## Rust
 
@@ -147,7 +147,7 @@ use std::collections::HashMap;
 pub fn new(config: Config) -> Self
 ```
 
-Cria uma instância de Logger. Múltiplos loggers podem coexistir com configs distintos (sem singleton global).
+Creates a Logger instance. Multiple loggers can coexist with different configs (no global singleton).
 
 ### `Logger::log(&self, message, level, metadata)`
 
@@ -155,7 +155,7 @@ Cria uma instância de Logger. Múltiplos loggers podem coexistir com configs di
 pub fn log(&self, message: &str, level: &str, metadata: HashMap<String, String>)
 ```
 
-Sem retorno. Falhas no I/O são silenciosas.
+No return value. I/O failures are silent.
 
 ### `Config`
 
@@ -177,15 +177,15 @@ impl Default for Config {
 }
 ```
 
-Não há `formatter`, `redact_keys`, `remote_url` na v0.1 do Rust — chegam em v0.2.
+`formatter`, `redact_keys`, `remote_url` are not exposed in Rust v0.1 — they land in v0.2.
 
-### Funções públicas auxiliares (pure functions, testáveis)
+### Public helper functions (pure, testable)
 
 ```rust
 pub fn escape_json_string(s: &str) -> String
 ```
 
-Escapa uma string para inclusão segura como JSON string value (RFC 8259-compliant). Exposta para uso direto se você precisa construir JSON parcial fora do Logger.
+Escapes a string for safe inclusion as a JSON string value (RFC 8259-compliant). Exposed for direct use if you need to build partial JSON outside the Logger.
 
 ```rust
 pub fn build_json_line(
@@ -197,11 +197,11 @@ pub fn build_json_line(
 ) -> String
 ```
 
-Constrói a linha JSON exatamente como o Logger emite. Útil para testes deterministicos com timestamp injetado.
+Builds the JSON line exactly as the Logger emits. Useful for deterministic tests with injected timestamp.
 
 ## CLI — log analyzer
 
-Não é uma API de biblioteca, é um script:
+Not a library API — a script:
 
 ```bash
 npm run analyze <log-file> [-- <flags>]
@@ -209,44 +209,44 @@ npm run analyze <log-file> [-- <flags>]
 
 Flags:
 
-| Flag | Comportamento |
+| Flag | Behavior |
 |---|---|
-| nenhuma | Análise local 7 camadas, zero rede |
-| `--llm=anthropic` | Cloud Claude (precisa `ANTHROPIC_API_KEY`) |
+| none | 7-layer local analysis, zero network |
+| `--llm=anthropic` | Cloud Claude (needs `ANTHROPIC_API_KEY`) |
 | `--llm=ollama` | Local LLM via Ollama (`OLLAMA_HOST`, `OLLAMA_MODEL`) |
 | `--llm=openai` | OpenAI-compatible (`OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_MODEL`) |
-| `--prompt-only` | Imprime prompt para colar em chat |
-| `--help` ou `-h` | Mostra todos os flags e env vars |
+| `--prompt-only` | Prints the prompt for manual paste into a chat |
+| `--help` or `-h` | Shows every flag and env var |
 
 Exit codes:
 
-- `0` — sucesso, ou nenhum erro encontrado, ou prompt-only print
-- `1` — file not found, network failure (em modo `--llm=*`), API error
-- `2` — flag desconhecido
+- `0` — success, no errors found, or prompt-only print
+- `1` — file not found, network failure (in `--llm=*` mode), API error
+- `2` — unknown flag
 
-## Mudanças semver
+## Semver changes
 
-Todas as APIs públicas listadas acima são **estáveis** dentro de uma versão major. Breaking changes em qualquer uma delas exigem bump major:
+All public APIs listed above are **stable** within a major version. Breaking changes to any of them require a major bump:
 
-- Renomear `log` → `oilLog` seria 2.0
-- Mudar `configure()` para retornar o config consolidado seria 2.0
-- Adicionar campo opcional ao `Config` (Rust) é 0.2 (minor)
-- Adicionar `flush()` exposto é 0.2 (minor)
-- Fix de bug que muda comportamento observável documentado pode ser 0.1.1 (patch) ou 0.2 (minor) dependendo da severidade
+- Renaming `log` → `oilLog` would be 2.0
+- Changing `configure()` to return the resolved config would be 2.0
+- Adding an optional field to `Config` (Rust) is 0.2 (minor)
+- Adding an exposed `flush()` is 0.2 (minor)
+- A bug fix that changes observable documented behavior may be 0.1.1 (patch) or 0.2 (minor) depending on severity
 
-Critério: o teste oficial e a documentação canônica em v0.1.0 são o "contrato". Mudanças que invalidam testes existentes são breaking.
+Criterion: the official tests and canonical documentation in v0.1.0 are the "contract". Changes that invalidate existing tests are breaking.
 
-## Onde está cada implementação
+## Where each implementation lives
 
-| Runtime | Arquivo principal | Linhas |
+| Runtime | Main file | Lines |
 |---|---|---|
 | Node | [`src/index.js`](../../src/index.js) | ~200 |
 | Python | [`python/openinfra_logger/__init__.py`](../../python/openinfra_logger/__init__.py) | ~200 |
 | Go | [`go/logger.go`](../../go/logger.go) | ~120 |
-| Rust | [`rust/src/lib.rs`](../../rust/src/lib.rs) | ~130 (sem o módulo de teste inline) |
+| Rust | [`rust/src/lib.rs`](../../rust/src/lib.rs) | ~130 (excluding the inline test module) |
 
-Pequenas o suficiente para serem lidas inteiras em 5 minutos cada.
+Small enough to read in full in 5 minutes each.
 
-## Fim do manual
+## End of manual
 
-Voltar ao [índice](README.md) · [Issues](https://github.com/jonathascordeiro20/openinfra-logger/issues) · [Discussions](https://github.com/jonathascordeiro20/openinfra-logger/discussions)
+Back to the [index](README.md) · [Issues](https://github.com/jonathascordeiro20/openinfra-logger/issues) · [Discussions](https://github.com/jonathascordeiro20/openinfra-logger/discussions)

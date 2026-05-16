@@ -2,40 +2,40 @@
 
 [← back to manual index](README.md)
 
-A CLI `npm run analyze <log-file>` é um analisador de logs que roda **fully on-host** por default. Sem chamada de rede, sem dependência externa, sem upload.
+The `npm run analyze <log-file>` CLI is a log analyzer that runs **fully on-host** by default. No network call, no external dependency, no upload.
 
-A análise tem 7 camadas. Uma 8ª camada opcional adiciona um LLM (Anthropic / Ollama / OpenAI-compatible) para narrativa em prosa.
+The analysis has 7 layers. An optional 8th layer adds an LLM (Anthropic / Ollama / OpenAI-compatible) for narrative prose.
 
-## Invocação
+## Invocation
 
 ```bash
 npm run analyze ./logs/app.log                        # 100% local
-npm run analyze ./logs/app.log -- --prompt-only       # imprime prompt, sem API
+npm run analyze ./logs/app.log -- --prompt-only       # print prompt, no API call
 npm run analyze ./logs/app.log -- --llm=ollama        # local LLM
-npm run analyze ./logs/app.log -- --llm=anthropic     # cloud (precisa key)
+npm run analyze ./logs/app.log -- --llm=anthropic     # cloud (needs key)
 npm run analyze ./logs/app.log -- --llm=openai        # OpenAI-compatible
-npm run analyze ./logs/app.log -- --help              # mostra todos os flags
+npm run analyze ./logs/app.log -- --help              # show all flags
 ```
 
-## As 7 camadas locais
+## The 7 local layers
 
 ### 1. Parse
 
-Lê o arquivo, tenta `JSON.parse` em cada linha. Mantém entries válidas; conta linhas não-JSON separadamente.
+Reads the file and attempts `JSON.parse` on each line. Keeps valid entries; counts non-JSON lines separately.
 
-Suporta as 3 shapes do OIL: `default` (`level`+`timestamp`), `datadog` (`status`+`timestamp`), `elastic` (`log.level`+`@timestamp`). Funções `levelOf`/`tsOf`/`traceOf` aceitam qualquer um.
+Supports the 3 OIL shapes: `default` (`level`+`timestamp`), `datadog` (`status`+`timestamp`), `elastic` (`log.level`+`@timestamp`). Helpers `levelOf`/`tsOf`/`traceOf` accept any of them.
 
-### 2. Cluster por mensagem normalizada
+### 2. Cluster by normalized message
 
-UUIDs, hex (0x…) e dígitos longos (`\d{2,}`) são substituídos por placeholders genéricos antes do agrupamento. Resultado: variações como `request abc-123 failed` e `request def-456 failed` viram o mesmo cluster.
+UUIDs, hex (0x…), and long digit runs (`\d{2,}`) are replaced with generic placeholders before grouping. Result: variations like `request abc-123 failed` and `request def-456 failed` collapse into the same cluster.
 
-Saída: top-N clusters ordenados por frequência, com nível, serviços envolvidos, primeira/última ocorrência.
+Output: top-N clusters ranked by frequency, with level, services involved, first/last occurrence.
 
-### 3. Heurísticas regex
+### 3. Regex heuristics
 
-Seis padrões pré-definidos:
+Six predefined patterns:
 
-| Nome | Pattern | Dica que imprime |
+| Name | Pattern | Printed hint |
 |---|---|---|
 | Timeout cascade | `timeout\|deadline exceeded\|ETIMEDOUT\|ECONNRESET\|context deadline` | "Check upstream latency, retry budgets, pool sizes" |
 | Out of memory | `out of memory\|OOM\|heap out\|killed\|cannot allocate` | "Container limits, payload size, leak suspects" |
@@ -44,35 +44,35 @@ Seis padrões pré-definidos:
 | 5xx upstream | `5\d\d\|bad gateway\|service unavailable\|internal server error` | "Aggregate by upstream host" |
 | Rate limit | `429\|rate.?limit\|too many requests\|throttle` | "One caller likely misconfigured" |
 
-Casa contra a key normalizada do cluster, então `db.timeout: deadline exceeded on findOrder()` matcha `timeout cascade`.
+Matches against the normalized cluster key, so `db.timeout: deadline exceeded on findOrder()` matches `timeout cascade`.
 
 ### 4. Stack-trace dedup
 
-Para entries com campo `stack`/`stack_trace`/`error.stack`, extrai as 3 primeiras frames, normaliza números de linha (`:42:10` → `:L`) e paths absolutos (`/full/path/node_modules/x` → `node_modules/x`), e agrupa.
+For entries with a `stack`/`stack_trace`/`error.stack` field, extracts the first 3 frames, normalizes line numbers (`:42:10` → `:L`) and absolute paths (`/full/path/node_modules/x` → `node_modules/x`), and groups.
 
-Útil para descobrir "o mesmo bug se manifestou 500 vezes hoje".
+Useful for discovering "the same bug fired 500 times today".
 
 ### 5. Temporal cascade detection
 
-Janela deslizante de 1 segundo sobre os timestamps. Sempre que ≥3 entries de erro caem no mesmo segundo, registra como cascata e imprime: início, fim, número de events, serviços envolvidos.
+Sliding 1-second window over timestamps. Whenever ≥3 error entries fall within the same second, it's recorded as a cascade with start, end, event count, and involved services.
 
-Esse é o sinal clássico de "uma coisa quebrou e propagou".
+That's the classic "something broke and propagated" signal.
 
 ### 6. Per-minute anomaly via z-score
 
-Agrega entries por minuto. Calcula média e desvio. Imprime minutos com z ≥ 2 (eventos por minuto bem acima do baseline).
+Buckets entries by minute. Computes mean and standard deviation. Prints minutes with z ≥ 2 (events-per-minute well above the baseline).
 
-Útil para detectar picos curtos em logs longos sem precisar de monitor externo.
+Useful for spotting short spikes in long logs without an external monitor.
 
 ### 7. Service interaction graph
 
-Para entries com `trace_id`, agrupa por trace e extrai pares de serviços que aparecem no mesmo trace. Conta as ocorrências.
+For entries with `trace_id`, groups by trace and extracts pairs of services that co-occur in the same trace. Counts the occurrences.
 
-Saída: as 5 interações mais frequentes (e.g. `checkout-api ↔ auth-svc · 38 traces`). Isso revela a topologia real do tráfego sem precisar de tracer dedicado.
+Output: the top 5 most frequent pairs (e.g. `checkout-api ↔ auth-svc · 38 traces`). This reveals real traffic topology without a dedicated tracer.
 
-## Camada 8 — LLM opt-in (3 providers)
+## The 8th layer — LLM opt-in (3 providers)
 
-Quando você passa `--llm=<provider>`, o analyzer monta um prompt com o resumo das 7 camadas e envia ao provider escolhido:
+When you pass `--llm=<provider>`, the analyzer builds a prompt with the summary of the 7 layers and sends it to the chosen provider:
 
 ### `--llm=anthropic` (cloud)
 
@@ -81,56 +81,56 @@ export ANTHROPIC_API_KEY=sk-ant-...
 npm run analyze app.log -- --llm=anthropic
 ```
 
-Variáveis opcionais:
+Optional env vars:
 
 - `ANTHROPIC_MODEL` (default: `claude-haiku-4-5`)
 
-Endpoint: `https://api.anthropic.com/v1/messages`. Modelo default é o haiku (fast, cheap). Para análise profunda em incidentes grandes, prefira `sonnet`.
+Endpoint: `https://api.anthropic.com/v1/messages`. The default model is haiku (fast, cheap). For deep analysis on large incidents, prefer `sonnet`.
 
 ### `--llm=ollama` (local)
 
 ```bash
-# 1. Instale Ollama (uma vez): https://ollama.com
-# 2. Baixe um modelo:
+# 1. Install Ollama once: https://ollama.com
+# 2. Pull a model:
 ollama pull llama3.1
-# 3. Rode:
+# 3. Run:
 npm run analyze app.log -- --llm=ollama
 ```
 
-Variáveis opcionais:
+Optional env vars:
 
 - `OLLAMA_HOST` (default: `http://localhost:11434`)
 - `OLLAMA_MODEL` (default: `llama3.1`)
 
-Endpoint: `<OLLAMA_HOST>/api/chat`. Funciona 100% local — nenhum dado sai da sua máquina. Latência típica em laptop com GPU: 5–15 s para a resposta inteira.
+Endpoint: `<OLLAMA_HOST>/api/chat`. Runs 100% locally — no data leaves your machine. Typical latency on a laptop with GPU: 5–15 s for a full response.
 
 ### `--llm=openai` (compatible endpoint)
 
 ```bash
-# OpenAI direto:
+# OpenAI directly:
 export OPENAI_API_KEY=sk-...
 npm run analyze app.log -- --llm=openai
 
-# Ou LM Studio local:
+# Or local LM Studio:
 export OPENAI_BASE_URL=http://localhost:1234/v1
 export OPENAI_MODEL=qwen2.5-coder-32b
 npm run analyze app.log -- --llm=openai
-# (sem API key — LM Studio aceita anônimo)
+# (no API key — LM Studio accepts anonymous)
 
-# Ou vLLM, Together, Groq, Perplexity, etc — qualquer endpoint compatível.
+# Or vLLM, Together, Groq, Perplexity, etc. — any compatible endpoint.
 ```
 
-Variáveis:
+Env vars:
 
-- `OPENAI_API_KEY` (obrigatório se o base é `api.openai.com`)
+- `OPENAI_API_KEY` (required if base is `api.openai.com`)
 - `OPENAI_BASE_URL` (default: `https://api.openai.com/v1`)
 - `OPENAI_MODEL` (default: `gpt-4o-mini`)
 
 ### `--prompt-only`
 
-Imprime o prompt formatado para você colar no chat de sua escolha (claude.ai, ChatGPT, etc) sem fazer nenhuma chamada. Útil quando você não quer dar API key ao analyzer.
+Prints the formatted prompt for you to paste into the chat of your choice (claude.ai, ChatGPT, etc.) without making any call. Useful when you don't want to give an API key to the analyzer.
 
-## Anatomia de uma run
+## Anatomy of a run
 
 ```
 $ npm run analyze ./logs/error.jsonl
@@ -188,7 +188,7 @@ $ npm run analyze ./logs/error.jsonl
    npm run analyze app.log -- --prompt-only     (print prompt, no API call)
 ```
 
-## Como o prompt é montado (para os curiosos)
+## How the prompt is assembled (for the curious)
 
 ```text
 You are an expert Site Reliability Engineer (SRE). Analyze the following
@@ -208,14 +208,14 @@ Top clusters:
 [ { count: 8, levels: ['error'], services: ['checkout-api'], pattern: 'db.timeout: deadline exceeded on findOrder()', sample: { ... } }, ... ]
 ```
 
-O LLM responde com prose em markdown. A saída é impressa no stdout — você pode redirecionar para arquivo (`> diagnosis.md`).
+The LLM responds with markdown prose. The output is written to stdout — you can redirect to a file (`> diagnosis.md`).
 
-## Limitações conhecidas
+## Known limitations
 
-- O parsing **pula linhas não-JSON sem warning detalhado**. Se seu log é misto JSON + texto, considere `grep '^{' app.log | npm run analyze /dev/stdin -- ...` (que ainda não funciona — workaround: salvar em arquivo limpo primeiro).
-- A janela do anomaly z-score é **por minuto fixo**. Bursts de < 60s não aparecem aqui (eles aparecem na seção "Temporal cascades").
-- O LLM mode não envia **valores redatados** (`[REDACTED]`), mas envia o pattern do cluster (e.g. `password mismatch for user N`). O texto da mensagem em si vai para o LLM. Se sua aplicação loga texto livre com PII, redacte na camada de aplicação antes.
+- Parsing **skips non-JSON lines without a detailed warning**. If your log is mixed JSON + plain text, consider `grep '^{' app.log | npm run analyze /dev/stdin -- ...` (which is not yet wired — workaround: save to a clean file first).
+- The anomaly z-score window is **per fixed minute**. Bursts shorter than 60 s don't appear there (they show up in "Temporal cascades" instead).
+- The LLM mode does not send **redacted values** (`[REDACTED]`), but it does send the cluster pattern (e.g. `password mismatch for user N`). The text of the message itself goes to the LLM. If your application logs free text with PII, redact at the application layer first.
 
-## Próximo passo
+## Next
 
-→ [10 · Performance](10-performance.md) — números honestos, tuning, hot-path notes.
+→ [10 · Performance](10-performance.md) — honest numbers, tuning, hot-path notes.

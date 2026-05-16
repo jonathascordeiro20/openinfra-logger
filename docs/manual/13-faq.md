@@ -2,37 +2,37 @@
 
 [← back to manual index](README.md)
 
-## Por que mais um logger?
+## Why another logger?
 
-Porque nenhum logger existente é **a mesma coisa** em Node, Python, Go e Rust. Pino é ótimo em Node. structlog é ótimo em Python. zap é ótimo em Go. tracing é ótimo em Rust. Mas nenhum dos quatro emite **o mesmo JSON** que os outros três. Em times poliglotas, isso quebra o Datadog correlator no primeiro incident postmortem que envolve mais de uma linguagem.
+Because no existing logger is **the same thing** in Node, Python, Go, and Rust. Pino is great in Node. structlog is great in Python. zap is great in Go. tracing is great in Rust. But none of the four emits **the same JSON** as the other three. In polyglot teams, that breaks the Datadog correlator on the first postmortem that crosses two languages.
 
-## Não é mais simples só padronizar com `winston-format-json` ou similar?
+## Isn't it simpler to just standardize with `winston-format-json` or similar?
 
-Sim, **se você só tem Node**. Não, se você tem Python + Go também — você acabaria escrevendo três formatters customizados que vão divergir em 18 meses. OIL é a infra que escreve esses três formatters uma vez, audita uma vez, e atualiza uma vez.
+Yes, **if you only have Node**. No, if you also have Python + Go — you'd end up writing three custom formatters that drift in 18 months. OIL is the infrastructure that writes those three formatters once, audits them once, and updates them once.
 
-## "Zero dependencies" é marketing?
+## Is "zero dependencies" marketing?
 
-Não é marketing — é literal nos pacotes publicados. Mas é uma claim **sobre a árvore de dependências**, não sobre comportamento de rede. Detalhes em [Concepts → zero-dependency claim](02-concepts.md#zero-dependency-claim).
+It's not marketing — it's literal in the published packages. But it is a claim **about the dependency tree**, not about network behavior. Details in [Concepts → zero-dependency claim](02-concepts.md#zero-dependency-claim).
 
-## A redação é segura?
+## Is redaction safe?
 
-A redação **previne vazamento em metadata.value quando metadata.key bate**. Ela não detecta valores sensíveis em texto livre (mensagem, stack trace), não faz mascaramento parcial (last-4-digits), e não corre regex em values. Detalhes e armadilhas em [07 · Redaction → padrões anti-vazamento](07-redaction.md#padrões-anti-vazamento-na-sua-aplicação).
+Redaction **prevents leakage in `metadata.value` when the `metadata.key` matches**. It does not detect sensitive values in free text (message, stack trace), does not partial-mask (last-4-digits), and does not run regex over values. Details and pitfalls in [07 · Redaction → anti-leak patterns](07-redaction.md#anti-leak-patterns-in-your-application).
 
-## Por que `level: 'verbose'` virou `info`?
+## Why did `level: 'verbose'` become `info`?
 
-Os 4 níveis são intencionalmente restritos (`debug`/`info`/`warn`/`error`). Permitir níveis arbitrários quebra a uniformidade entre runtimes e força filtros customizados em cada backend. Se você precisa de mais granularidade, use o `metadata.category` ou `metadata.severity_detail`.
+The 4 levels are intentionally restricted (`debug`/`info`/`warn`/`error`). Allowing arbitrary levels breaks uniformity across runtimes and forces custom filters on every backend. If you need more granularity, use `metadata.category` or `metadata.severity_detail`.
 
-## OIL tem rotação de arquivo?
+## Does OIL rotate files?
 
-Não. Use `logrotate` (Linux), `multilog` (daemontools), ou um shipper (Vector / fluent-bit) que rotacione a montante. Rotação dentro do logger é uma fonte clássica de race conditions e prefere-se fora do processo.
+No. Use `logrotate` (Linux), `multilog` (daemontools), or a shipper (Vector / fluent-bit) that rotates upstream. Rotation inside the logger is a classic source of race conditions and belongs outside the process.
 
-## OIL tem retry de envio remoto?
+## Does OIL retry remote sends?
 
-Não em v0.1.0. Falha de POST é log-and-discard. Se você precisa de garantia de entrega, ponha um shipper local no caminho. **Loggers não devem ser fila de mensagens.**
+Not in v0.1.0. POST failure is log-and-discard. If you need delivery guarantees, place a local shipper in the path. **Loggers should not be a message queue.**
 
-## Posso usar OIL com `pretty-printer`?
+## Can I use OIL with a `pretty-printer`?
 
-Sim — OIL emite JSON em linhas, então qualquer pretty-printer aceita. Em dev:
+Yes — OIL emits JSON in lines, so any pretty-printer works. For dev:
 
 ```bash
 node app.js | jq .
@@ -40,52 +40,52 @@ node app.js | pino-pretty
 python app.py | jq .
 ```
 
-## Em produção, devo usar `console` ou `file`?
+## In production, should I use `console` or `file`?
 
-**`console`** se você tem qualquer um destes:
-- Docker + log driver (`json-file`, `journald`)
-- Kubernetes (kubelet coleta stdout/stderr)
-- Datadog Agent, Vector, fluent-bit no host
+**`console`** if you have any of:
+- Docker + a log driver (`json-file`, `journald`)
+- Kubernetes (kubelet collects stdout/stderr)
+- Datadog Agent, Vector, fluent-bit on the host
 
-**`file`** se você tem:
-- Compliance que exige logs em disco
-- Sem agente de coleta no host
-- Quer fallback para quando o backend cai
+**`file`** if you have:
+- Compliance that requires logs on disk
+- No collection agent on the host
+- A need for fallback when the backend is down
 
-`remote` se você está em serverless ou edge sem agente local.
+`remote` if you're on serverless or edge with no local agent.
 
-## OIL afeta a performance do meu app?
+## Does OIL affect my app's performance?
 
-No Node, ~99 µs de p50 por `log()`. Em uma API REST típica (1k QPS, 5 logs por request), isso é ~5% da capacidade da CPU dedicada a uma core. Geralmente não detectável fora de profiling intencional. Se você está no limite de CPU, `redactKeys: []` corta o gargalo dominante.
+On Node, ~99 µs of p50 per `log()`. For a typical REST API (1k QPS, 5 logs per request), that's ~5% of one dedicated CPU core. Usually not detectable outside intentional profiling. If you're CPU-bound, `redactKeys: []` cuts the dominant bottleneck.
 
-## Por que o Rust está com features tão reduzidas?
+## Why is Rust so reduced in features?
 
-A v0.1 do Rust é proposital — um JSON builder zero-dep que é trivialmente auditável (~100 linhas no `lib.rs`). Adicionar formatters, redaction recursive e batch transport sem trazer crate é trabalho real e bem testado, e veio para v0.2.
+The Rust v0.1 is intentional — a zero-dep JSON builder that's trivially auditable (~100 lines of `lib.rs`). Adding formatters, recursive redaction, and batched transport without pulling in crates is real, well-tested work, and it landed for v0.2.
 
-## Posso contribuir?
+## Can I contribute?
 
-Sim. Veja [CONTRIBUTING.md](../../CONTRIBUTING.md). O princípio mais importante: **paridade entre runtimes**. Se você adicionar uma feature em um runtime, considere o que ela vira nos outros três.
+Yes. See [CONTRIBUTING.md](../../CONTRIBUTING.md). The single most important principle: **parity across runtimes**. If you add a feature to one runtime, think about what it becomes in the other three.
 
-## Quem mantém isso?
+## Who maintains this?
 
-Jonathas Cordeiro (<https://github.com/jonathascordeiro20>). Solo no momento. Open to maintainers — especialmente alguém Go ou Rust fluente que queira owner do roadmap dessas linguagens.
+Jonathas Cordeiro (<https://github.com/jonathascordeiro20>). Solo at the moment. Open to maintainers — especially someone fluent in Go or Rust who wants to own that runtime's roadmap.
 
-## Posso usar comercialmente?
+## Can I use it commercially?
 
-MIT. Sim — sem royalty, sem aviso, sem obrigação de contribuir. Não recomendamos fork sem fechar comunicação primeiro (issue, e-mail), mas é totalmente seu direito.
+MIT. Yes — no royalty, no notice, no obligation to contribute. Forking without prior communication (issue, email) isn't recommended, but it's fully your right.
 
-## Onde reportar vulnerabilidade de segurança?
+## Where do I report a security vulnerability?
 
-NÃO use issues públicas para vulnerabilidades. E-mail direto: <jonathas.cordeiro2023@gmail.com> com assunto `[security] openinfra-logger`. Resposta em até 48h úteis.
+DO NOT use public issues for vulnerabilities. Email directly: <jonathas.cordeiro2023@gmail.com> with subject `[security] openinfra-logger`. Response within 48 business hours.
 
-## E se eu quiser apenas o JSON shape sem usar a lib?
+## What if I only want the JSON shape without the lib?
 
-Use. O contrato está em [02 · Concepts](02-concepts.md#o-contrato-json). Não é proprietário; documente sua interpretação dele no seu repo e voilá. A lib é uma implementação de referência, não a única.
+Use it. The contract is in [02 · Concepts](02-concepts.md#the-json-contract). It's not proprietary; document your interpretation in your repo and you're done. The lib is a reference implementation, not the only one.
 
-## Vai ter v1.0?
+## Will there be a v1.0?
 
-Quando: as APIs estabilizarem a ponto de podermos commitar com semver estrita. Quando: Rust e Go tiverem paridade com Node e Python (formatters, batching, redaction, OTel). Estimativa atual: **6–9 meses**, mas depende de adoção e feedback.
+When: the APIs stabilize enough that we can commit with strict semver. When: Rust and Go reach parity with Node and Python (formatters, batching, redaction, OTel). Current estimate: **6–9 months**, depending on adoption and feedback.
 
-## Próximo passo
+## Next
 
-→ [14 · API reference](14-api-reference.md) — assinaturas completas por runtime.
+→ [14 · API reference](14-api-reference.md) — exact signatures per runtime.

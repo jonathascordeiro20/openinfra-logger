@@ -2,14 +2,14 @@
 
 [← back to manual index](README.md)
 
-OIL detecta um span ativo do OpenTelemetry em tempo de chamada e injeta `trace_id` e `span_id` na entrada do log. **Zero configuração.** Você precisa apenas que o OTel já esteja instalado e ativo no processo.
+OIL detects an active OpenTelemetry span at call time and injects `trace_id` and `span_id` into the log entry. **Zero configuration.** You just need OTel already installed and active in the process.
 
-## Como funciona
+## How it works
 
-A função de extração é defensiva — funciona se o OTel está instalado, falha silenciosamente se não:
+The extraction function is defensive — it works if OTel is installed, fails silently if not:
 
 ```js
-// Node implementation (simplificado)
+// Node implementation (simplified)
 function extractTraceContext() {
   try {
     const otel = require('@opentelemetry/api');
@@ -25,44 +25,44 @@ function extractTraceContext() {
 }
 ```
 
-A função roda em **toda** chamada `log()` (custo: ~3µs/call com OTel instalado, ~0.5µs sem).
+The function runs on **every** `log()` (cost: ~3 µs/call with OTel installed, ~0.5 µs without).
 
-## Suporte por runtime
+## Per-runtime support
 
-| Runtime | Suporte | Pacote esperado |
+| Runtime | Support | Expected package |
 |---|---|---|
 | **Node** | ✓ auto | `@opentelemetry/api` |
-| **Python** | ✓ auto | `opentelemetry-api` (já instalado se você passar o extra `[opentelemetry]`) |
-| **Go** | — | (roadmap v0.2) |
-| **Rust** | — | (roadmap v0.2) |
+| **Python** | ✓ auto | `opentelemetry-api` (already installed if you used the `[opentelemetry]` extra) |
+| **Go** | — | (v0.2 roadmap) |
+| **Rust** | — | (v0.2 roadmap) |
 
-## Exemplo end-to-end — Node
+## End-to-end example — Node
 
 ```js
 const { trace } = require('@opentelemetry/api');
 const { log } = require('@jonathascordeiro20/openinfra-logger');
 
-// Você configurou OTel em outro lugar (provider, exporter, etc).
+// You configured OTel elsewhere (provider, exporter, etc).
 const tracer = trace.getTracer('demo');
 
 tracer.startActiveSpan('process-order', (span) => {
   log('starting', 'info', { order_id: 'o_4419' });
   // → "trace_id":"a4f1c9…","span_id":"b3d8e2…","order_id":"o_4419"
 
-  // alguma lógica…
+  // some logic…
 
   log('completed', 'info', { order_id: 'o_4419', status: 'ok' });
-  // → mesmo trace_id, MESMO span_id
+  // → same trace_id, SAME span_id
 
   span.end();
 });
 
-// Fora do span:
+// Outside the span:
 log('idle', 'info');
-// → "trace_id" e "span_id" NÃO aparecem
+// → no "trace_id" or "span_id" present
 ```
 
-## Exemplo end-to-end — Python
+## End-to-end example — Python
 
 ```python
 from opentelemetry import trace
@@ -75,65 +75,65 @@ with tracer.start_as_current_span("process-order"):
     # → "trace_id":"a4f1c9…","span_id":"b3d8e2…"
 ```
 
-## Como aparece nos formatters
+## How it shows up in each formatter
 
-Sem formatter ou com `formatter: 'default'`:
+With no formatter or `formatter: 'default'`:
 
 ```json
 { "trace_id": "a4f1c9d3…", "span_id": "b3d8e2f7…", ... }
 ```
 
-Com `formatter: 'datadog'`:
+With `formatter: 'datadog'`:
 
 ```json
 { "dd.trace_id": "a4f1c9d3…", "dd.span_id": "b3d8e2f7…", ... }
 ```
 
-Com `formatter: 'elastic'`:
+With `formatter: 'elastic'`:
 
 ```json
 { "trace_id": "a4f1c9d3…", "span_id": "b3d8e2f7…", ... }
 ```
 
-(ECS aceita os nomes originais; v0.2 vai oferecer `trace.id`/`span.id` se você precisar de ECS estrito.)
+(ECS accepts the original names; v0.2 will offer `trace.id`/`span.id` if you need strict ECS.)
 
-## Quando o trace context **não** aparece
+## When trace context **does not** appear
 
-1. **OTel não está instalado** — sem package no `node_modules`/`site-packages`, o try-catch silenciosa o ImportError. Custo zero, comportamento limpo.
-2. **Span ativo não existe no contexto** — `getActiveSpan()` retorna undefined fora de um `startActiveSpan` / context manager.
-3. **Span é `NonRecordingSpan` ou inválido** — `isSpanContextValid` retorna false; OIL pula a injeção.
-4. **Você está em uma callback assíncrona que perdeu o context** — `setTimeout`, `process.nextTick`, etc., precisam de propagação manual via OTel context API. OIL não faz isso por você.
+1. **OTel is not installed** — without the package in `node_modules`/`site-packages`, the try/catch silences the ImportError. Zero cost, clean behavior.
+2. **No active span in context** — `getActiveSpan()` returns undefined outside `startActiveSpan` / a context manager.
+3. **Span is `NonRecordingSpan` or invalid** — `isSpanContextValid` returns false; OIL skips the injection.
+4. **You're in an async callback that lost context** — `setTimeout`, `process.nextTick`, etc. need manual propagation via the OTel context API. OIL does not do this for you.
 
 ## Vendor lock-in?
 
-Não. O OTel API package é o padrão aberto. Se você usa Honeycomb, Lightstep, Tempo, Jaeger, ou o agente do Datadog que fala OTel — todos expõem trace context via `@opentelemetry/api`. OIL não tem conhecimento do backend.
+No. The OTel API package is the open standard. If you use Honeycomb, Lightstep, Tempo, Jaeger, or the Datadog agent that speaks OTel — all expose trace context via `@opentelemetry/api`. OIL knows nothing about the backend.
 
-## Quando você **não** quer a injeção
+## When you **don't** want injection
 
-Use case raro: você quer logar fora de um span sem que OIL tente extrair contexto.
+Rare use case: you want to log outside a span without OIL trying to extract context.
 
-A v0.1 **sempre** tenta extrair (o overhead é baixíssimo). Se isso for um problema demonstrado em profile real, abra uma issue — o flag `disableOtelExtraction: true` é trivial de adicionar e podemos cuidar disso para v0.2.
+v0.1 **always** tries to extract (overhead is very low). If this turns out to be a measurable problem in real profiles, open an issue — a `disableOtelExtraction: true` flag is trivial to add for v0.2.
 
-## Combinando trace context com defaultMetadata
+## Combining trace context with defaultMetadata
 
-A ordem de merge é:
+The merge order is:
 
 ```
 1. timestamp/level/message
 2. defaultMetadata
-3. trace context        ← override
-4. metadata da chamada  ← override final
+3. trace context        ← can override
+4. metadata from the call ← final override
 ```
 
-Implicação: você pode **forçar** um trace_id passando no metadata:
+Implication: you can **force** a trace_id by passing it in the metadata:
 
 ```js
 log('replay', 'info', { trace_id: 'manual-replay-123' });
-// → "trace_id":"manual-replay-123" (mesmo dentro de um span ativo!)
+// → "trace_id":"manual-replay-123" (even inside an active span!)
 ```
 
-Útil para backfill, replay de eventos, ou correlação entre sistemas que não compartilham OTel.
+Useful for backfill, event replay, or correlation across systems that don't share OTel.
 
-## Próximo passo
+## Next
 
-→ [09 · Log analyzer](09-analyzer.md) — CLI local + LLM opt-in (3 providers).
+→ [09 · Log analyzer](09-analyzer.md) — local CLI + LLM opt-in (3 providers).

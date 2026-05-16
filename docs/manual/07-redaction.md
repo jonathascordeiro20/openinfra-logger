@@ -2,11 +2,11 @@
 
 [← back to manual index](README.md)
 
-A redação automática intercepta valores sensíveis **dentro do processo**, antes de qualquer transport. É a feature mais load-bearing do OIL para qualquer aplicação sujeita a LGPD ou GDPR.
+Auto-redaction intercepts sensitive values **inside the process**, before any transport. It's the most load-bearing feature of OIL for any application subject to LGPD or GDPR.
 
-## Como funciona
+## How it works
 
-Algoritmo recursivo:
+Recursive algorithm:
 
 ```python
 def redact(value, keys_to_redact):
@@ -18,7 +18,7 @@ def redact(value, keys_to_redact):
     return value  # primitives are returned as-is
 ```
 
-A função roda **sobre a entry inteira** depois do formatter e antes do `JSON.stringify`. Custo aproximado: ~95µs/call no Node sob payload típico (4 chaves redatáveis + nested).
+The function runs **over the whole entry** after the formatter and before `JSON.stringify`. Approximate cost: ~95 µs/call on Node with a typical payload (4 redactable keys + nested).
 
 ## Defaults
 
@@ -30,63 +30,63 @@ api_key
 credit_card
 ```
 
-(case-insensitive na key — `PASSWORD`, `Password`, `password` todos são redatados)
+(case-insensitive on the key — `PASSWORD`, `Password`, `password` all match)
 
-## Customizando
+## Customizing
 
 ```js
 configure({
   redactKeys: [
     // defaults
     'password', 'token', 'secret', 'api_key', 'credit_card',
-    // adicionais comuns para BR
+    // common Brazil
     'cpf', 'rg', 'cnpj',
-    // adicionais comuns para SaaS
+    // common SaaS
     'ssn', 'phone', 'email', 'address',
     'birthdate', 'mother_name',
-    // específicos do seu domínio
+    // domain-specific
     'pix_key', 'iban', 'pin_code',
   ],
 });
 ```
 
-**Atenção:** isso **substitui** o array default, não adiciona. Se você passar `['cpf']`, o `password` deixa de ser redatado. Sempre inclua os defaults se ainda os quer.
+**Heads up:** this **replaces** the default array, it doesn't extend it. If you pass `['cpf']`, `password` stops being redacted. Always include the defaults if you still want them.
 
-## O que a redação **faz**
+## What redaction **does**
 
-✓ Substitui o **valor** por `[REDACTED]` quando a **key** bate.
-✓ Recursiva em dicts/objects e arrays/lists.
-✓ Case-insensitive em key names.
-✓ Roda em **todos** os transports (console, file, remote).
-✓ Roda em **todos** os formatters.
-✓ Funciona sobre `defaultMetadata`, `metadata` da chamada, e `trace_id`/`span_id` — qualquer key no top-level ou nested.
+✓ Replaces the **value** with `[REDACTED]` when the **key** matches.
+✓ Recursive in dicts/objects and arrays/lists.
+✓ Case-insensitive on key names.
+✓ Runs across **all** transports (console, file, remote).
+✓ Runs across **all** formatters.
+✓ Operates on `defaultMetadata`, the call's `metadata`, and `trace_id`/`span_id` — any key at top level or nested.
 
-## O que a redação **não** faz
+## What redaction **does not** do
 
-✗ **Não detecta valores sem nome de campo.** Se você loga uma string solta como `log("user typed: 4111-1111-1111-1111", "info")`, o cartão **vaza**. A redação opera sobre keys, não sobre values.
+✗ **Does not detect values without a field name.** If you log a free string like `log("user typed: 4111-1111-1111-1111", "info")`, the card **leaks**. Redaction operates on keys, not values.
 
-✗ **Não substitui parcialmente.** Quando matcha, vira `[REDACTED]` por inteiro. Não preserva últimos 4 dígitos do cartão, não preserva domínio do email.
+✗ **Does not partial-substitute.** When it matches, it replaces with `[REDACTED]` in full. It does not preserve the last 4 digits of a card, the domain of an email, etc.
 
-✗ **Não detecta cognatos.** `passwd`, `pwd`, `pass` não são redatados se você não adicionar à lista. Só `password` por default.
+✗ **Does not detect cognates.** `passwd`, `pwd`, `pass` are not redacted unless you add them. Only `password` by default.
 
-✗ **Não faz mascaramento por regex sobre values.** Padrão `\d{16}` (cartão) não é detectado.
+✗ **Does not pattern-match values.** A regex like `\d{16}` (card number) is not detected.
 
-✗ **Não corre em background** — é parte do hot path. Cada `log()` paga o custo. Por isso a lista deve ser curta o suficiente para ser O(N) trivial.
+✗ **Does not run in the background** — it's on the hot path. Every `log()` pays the cost. That's why the list should be short enough to stay trivial O(N).
 
 ## Edge cases
 
-### Caso 1: Key com case misturado
+### Case 1: Mixed-case key
 
 ```js
 log('login', 'info', {
   Password: 'a',     // → [REDACTED] (case-insensitive)
   TOKEN: 'b',        // → [REDACTED]
   Api_Key: 'c',      // → [REDACTED]
-  My_Custom: 'd',    // → "d" (não está na lista)
+  My_Custom: 'd',    // → "d" (not in the list)
 });
 ```
 
-### Caso 2: Nested 5+ levels
+### Case 2: 5+ levels of nesting
 
 ```js
 log('deep', 'info', {
@@ -95,30 +95,30 @@ log('deep', 'info', {
 // → "a":{"b":{"c":{"d":{"e":{"secret":"[REDACTED]"}}}}}
 ```
 
-A recursão não tem profundidade máxima. Stack overflow seria possível em objetos circulares — **mas circulares quebram o `JSON.stringify` antes**, então o OIL não precisa se proteger disso.
+Recursion has no max depth. Stack overflow would be possible with circular objects — **but circulars break `JSON.stringify` first**, so OIL doesn't need to guard against them.
 
-### Caso 3: Array de objects
+### Case 3: Array of objects
 
 ```js
 log('batch', 'info', {
   items: [
     { token: 'a' },         // → "token":"[REDACTED]"
     { token: 'b' },         // → "token":"[REDACTED]"
-    { ok: true },           // → "ok":true (não toca)
+    { ok: true },           // → "ok":true (untouched)
   ]
 });
 ```
 
-### Caso 4: Null / undefined
+### Case 4: Null / undefined
 
 ```js
 log('nulls', 'info', { a: null, password: null });
 // → "a":null,"password":"[REDACTED]"
 ```
 
-A key matchou — vira `[REDACTED]`, mesmo o valor original sendo `null`. Isso é proposital: não queremos vazar a **presença** do campo (o fato de ter uma key `password` é informação por si).
+The key matched — becomes `[REDACTED]`, even though the original value was `null`. This is intentional: we don't want to leak the **presence** of the field (the fact that there *is* a `password` key is information by itself).
 
-### Caso 5: Valor é objeto, key matcha
+### Case 5: Value is an object, key matches
 
 ```js
 log('payment', 'info', {
@@ -127,55 +127,55 @@ log('payment', 'info', {
 // → "credit_card":"[REDACTED]"
 ```
 
-O objeto inteiro vira `[REDACTED]` (a string). A recursão **para** quando a key matcha — não desce mais. Implicação: tudo dentro está protegido, mas você perde a estrutura.
+The entire object becomes `[REDACTED]` (the string). Recursion **stops** when the key matches — it doesn't descend further. Implication: everything inside is protected, but you lose the structure.
 
-### Caso 6: Valor de tipo inesperado
+### Case 6: Unexpected value type
 
 ```js
 log('weird', 'info', { token: Buffer.from([1,2,3]) });
 // → "token":"[REDACTED]"
 ```
 
-Mesmo se o valor não é uma string nem um objeto comum, a key bate → vira `[REDACTED]`. Buffers, Symbols, Dates, BigInts — todos viram `[REDACTED]` se a key matcha.
+Even if the value isn't a string or plain object, the key matches → becomes `[REDACTED]`. Buffers, Symbols, Dates, BigInts — all become `[REDACTED]` when the key matches.
 
-## Padrões anti-vazamento na sua aplicação
+## Anti-leak patterns in your application
 
-Mesmo com OIL, existem ângulos que dependem do **seu** código:
+Even with OIL, some angles depend on **your** code:
 
-### 1. Não passe strings sensíveis no `message`
+### 1. Don't put sensitive strings in `message`
 
 ```js
-// ✗ vaza
+// ✗ leaks
 log(`User ${user.email} failed login with password "${user.password}"`, 'warn');
 
-// ✓ protegido
+// ✓ protected
 log('login failed', 'warn', { user_email: user.email, password: user.password });
 ```
 
-A mensagem é texto livre. **OIL não redacta o `message`.** Use o metadata para qualquer coisa sensível.
+The message is free text. **OIL does not redact `message`.** Put anything sensitive in metadata.
 
-### 2. Renomeie suas estruturas para nomes redatáveis
+### 2. Rename your structures to redactable names
 
 ```js
-// ✗ vaza — "cc" não está na lista default
+// ✗ leaks — "cc" is not in the default list
 log('purchase', 'info', { user_id: 123, cc: user.credit_card });
 
-// ✓ protegido — renomear para "credit_card"
+// ✓ protected — rename to "credit_card"
 log('purchase', 'info', { user_id: 123, credit_card: user.credit_card });
 ```
 
-Ou adicione `'cc'` ao `redactKeys`. Mas é melhor padronizar nomes.
+Or add `'cc'` to `redactKeys`. Standardizing names is better.
 
-### 3. Headers HTTP são uma armadilha
+### 3. HTTP headers are a trap
 
 ```js
-log('outbound request', 'info', { 
-  url: '...', 
-  headers: { Authorization: 'Bearer …' } // ← "Authorization" não está na lista default
+log('outbound request', 'info', {
+  url: '...',
+  headers: { Authorization: 'Bearer …' } // ← "Authorization" not in default list
 });
 ```
 
-Solução:
+Fix:
 
 ```js
 configure({
@@ -183,19 +183,19 @@ configure({
 });
 ```
 
-### 4. Stack traces podem conter valores
+### 4. Stack traces can contain values
 
 ```js
 try { /* ... */ } catch (e) {
-  log('failed', 'error', { error: e.stack }); // ← se a função tinha args com valores, eles podem estar aqui
+  log('failed', 'error', { error: e.stack }); // ← if the function had args with values, they may be there
 }
 ```
 
-OIL não pode redactar texto livre dentro de uma string. Se você loga `e.stack`, leia antes e remova explicitamente o que importa.
+OIL cannot redact free text inside a string. If you log `e.stack`, read it first and remove what matters explicitly.
 
-## Testando que a redação funciona
+## Testing that redaction works
 
-Crie um test que loga um payload com `password` e verifica o output:
+Write a test that logs a payload with `password` and verifies the output:
 
 ```js
 const fs = require('fs');
@@ -211,8 +211,8 @@ setTimeout(() => {
 }, 50);
 ```
 
-A suíte oficial do OIL faz exatamente isso para os 5 keys default + caso recursivo + caso array. Veja `test/redaction.test.js`.
+The official OIL suite does exactly this for the 5 default keys + recursive case + array case. See `test/redaction.test.js`.
 
-## Próximo passo
+## Next
 
-→ [08 · OpenTelemetry](08-opentelemetry.md) — injeção automática de `trace_id`/`span_id`.
+→ [08 · OpenTelemetry](08-opentelemetry.md) — automatic `trace_id`/`span_id` injection.

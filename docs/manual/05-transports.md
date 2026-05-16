@@ -2,50 +2,50 @@
 
 [← back to manual index](README.md)
 
-Um **transport** é o canal de saída de uma entrada de log. OIL ativa transports pela lista `transports`. Múltiplos transports rodam em paralelo; falha de um não afeta os outros.
+A **transport** is the output channel for a log entry. OIL activates transports through the `transports` list. Multiple transports run in parallel; a failure in one does not affect the others.
 
 ## Console transport
 
-### Como funciona
+### How it works
 
-Cada `log()` chama o stream apropriado do runtime:
+Each `log()` calls the appropriate stream of the runtime:
 
-| Nível | Node | Python | Go | Rust |
+| Level | Node | Python | Go | Rust |
 |---|---|---|---|---|
 | `debug` | `console.debug` (stdout) | `_logger.debug` (stderr) | `fmt.Println` (stdout) | `println!` (stdout) |
 | `info` | `console.log` (stdout) | `_logger.info` (stderr) | `fmt.Println` (stdout) | `println!` (stdout) |
 | `warn` | `console.warn` (stderr) | `_logger.warning` (stderr) | `fmt.Println` (stdout) | `println!` (stdout) |
 | `error` | `console.error` (stderr) | `_logger.error` (stderr) | `fmt.Println` (stdout) | `println!` (stdout) |
 
-> **Atenção (Python):** o logger interno do Python usa `StreamHandler` que escreve em **stderr** por padrão. Se você está redirecionando stdout em testes, os logs continuam aparecendo em stderr. Isso é proposital — separa logs de output de programa.
+> **Note (Python):** the internal Python logger uses `StreamHandler`, which writes to **stderr** by default. If you're redirecting stdout in tests, logs still appear on stderr. This is intentional — it separates logs from program output.
 
-> **Atenção (Go / Rust):** v0.1 envia tudo para stdout, ignorando o nível. v0.2 vai diferenciar `warn`/`error` para stderr no Go e no Rust.
+> **Note (Go / Rust):** v0.1 sends everything to stdout, ignoring the level. v0.2 will route `warn`/`error` to stderr in Go and Rust.
 
-### Quando usar
+### When to use
 
-- **Sempre**, em qualquer ambiente. É o transport mais barato e o mais útil para Docker / Kubernetes que coletam stdout/stderr automaticamente.
-- Em produção atrás de um agente (Datadog Agent, fluent-bit, Vector), `console` é o **único** transport que você costuma precisar.
+- **Always**, in any environment. It's the cheapest transport and the most useful for Docker / Kubernetes which collect stdout/stderr automatically.
+- In production behind an agent (Datadog Agent, fluent-bit, Vector), `console` is the **only** transport you typically need.
 
-### Quando não usar
+### When not to use
 
-- Em CLIs interativas onde JSON polui a saída do usuário — você não vai colocar `transports: ['console']` numa ferramenta como `git status`. Para CLIs, considere `transports: ['file']` apontando para `~/.cache/seu-app/log.jsonl`.
+- In interactive CLIs where JSON pollutes user output — you wouldn't put `transports: ['console']` in a tool like `git status`. For CLIs, consider `transports: ['file']` pointing to `~/.cache/your-app/log.jsonl`.
 
 ## File transport
 
-### Como funciona
+### How it works
 
-Cada `log()` faz **append** ao arquivo em `filePath`. O modo de abertura é "append + create":
+Each `log()` appends to the file at `filePath`. The open mode is "append + create":
 
 ```
-node:   fs.appendFile(path, line + '\n', cb)  ← async, serializado por chain
-python: open(path, 'a').write(line + '\n')    ← sync, sem race
+node:   fs.appendFile(path, line + '\n', cb)  ← async, serialized by chain
+python: open(path, 'a').write(line + '\n')    ← sync, no race
 go:     os.OpenFile(path, O_APPEND|O_CREATE)  ← sync per call
 rust:   OpenOptions::new().create().append()  ← sync per call
 ```
 
-### Ordenação sob escrita concorrente
+### Ordering under concurrent writes
 
-Esse é o detalhe que muita gente subestima.
+This is the detail many people underestimate.
 
 ```
 Naive implementation:
@@ -53,10 +53,10 @@ Naive implementation:
 
   Async runtime (Node):
     fs.appendFile starts 3 simultaneous syscalls
-    → linhas podem aparecer como A, C, B
+    → lines may appear as A, C, B
 ```
 
-OIL no Node **encadeia escritas via Promise**:
+OIL on Node **chains writes via Promise**:
 
 ```js
 let fileWriteChain = Promise.resolve();
@@ -68,30 +68,30 @@ function appendToFileOrdered(filePath, line) {
 }
 ```
 
-Isso garante que linhas aparecem **na ordem em que `log()` foi chamado**. Custo: pequena latência adicional no hot path quando há contenção (~5–15µs/call sob 1k QPS).
+This guarantees lines appear **in the order `log()` was called**. Cost: a small extra hot-path latency under contention (~5–15 µs/call at 1k QPS).
 
-Em Python / Go / Rust o write é sync, então a ordem é natural.
+In Python / Go / Rust the write is sync, so order is natural.
 
-### Permissões e rotação
+### Permissions and rotation
 
-- O arquivo é criado com permissões padrão do umask (geralmente `0644`).
-- **OIL não faz rotação.** Use `logrotate`, `multilog`, ou um shipper (fluent-bit) que faz rotação a montante.
-- Se o arquivo é apagado externamente enquanto OIL está aberto (Linux): **as escritas continuam num inode órfão**. Você não vai ver mais logs no novo arquivo. Isso é uma armadilha clássica do `logrotate` — use `copytruncate` ou envie um sinal pra recriar o handle.
+- The file is created with the umask's default permissions (usually `0644`).
+- **OIL does not rotate.** Use `logrotate`, `multilog`, or a shipper (fluent-bit) that rotates upstream.
+- If the file is deleted externally while OIL has it open (Linux): **writes continue into an orphan inode**. You will not see new logs in the new file. This is the classic `logrotate` trap — use `copytruncate` or send a signal to recreate the handle.
 
-### Quando usar
+### When to use
 
-- **Compliance / auditoria** que exige logs em disco no mesmo host.
-- **Fallback** quando o remote transport falha — escreva em arquivo, deixe um shipper enviar depois.
-- **Debug local** quando você quer `tail -f` no shell.
+- **Compliance / audit** that requires logs on disk on the same host.
+- **Fallback** when the remote transport fails — write to file, let a shipper send later.
+- **Local debug** when you want `tail -f` in the shell.
 
-### Quando não usar
+### When not to use
 
-- **Em containers stateless** sem volume montado — você perde os logs no `kubectl delete pod`.
-- **Em filesystems read-only** (que é o que você quer em produção endurecida) — o write vai falhar silenciosamente, com mensagem em stderr.
+- **In stateless containers** without a mounted volume — you lose logs on `kubectl delete pod`.
+- **On read-only filesystems** (which is what you want in hardened production) — the write fails silently, with a message on stderr.
 
 ## Remote transport
 
-### Como funciona
+### How it works
 
 ```
                       ┌───────────────┐
@@ -109,14 +109,14 @@ log() ──────────────▶ │ in-memory     │
                   └────────────────┘
 ```
 
-A primeira chamada `log()` enche o buffer. Dois gatilhos disparam um POST:
+The first `log()` call fills the buffer. Two triggers fire a POST:
 
-1. **Por tamanho:** quando `buffer.length === batchSize` (default 100), o flush é imediato.
-2. **Por tempo:** quando o primeiro item entra no buffer, um timer (`flushIntervalMs`, default 2000ms) é agendado; ao disparar, faz flush do que houver.
+1. **By size:** when `buffer.length === batchSize` (default 100), flush is immediate.
+2. **By time:** when the first item enters the buffer, a timer (`flushIntervalMs`, default 2000 ms) is scheduled; when it fires, it flushes whatever is there.
 
-O timer é cancelado e re-agendado a cada flush por tamanho, então a janela é "no máximo 2 s desde o **primeiro** item do batch atual".
+The timer is cancelled and re-scheduled on each size-triggered flush, so the window is "at most 2 s since the **first** item in the current batch".
 
-### O que sobe na rede
+### What goes over the wire
 
 ```json
 [
@@ -126,44 +126,44 @@ O timer é cancelado e re-agendado a cada flush por tamanho, então a janela é 
 ]
 ```
 
-Um array JSON, não NDJSON. Razão: Datadog API, Elastic Bulk, e Loki Push aceitam payloads de array; NDJSON exige Content-Type específico ou wrappers. Se você precisar de NDJSON, sirva via shipper local (`vector`/`fluent-bit`) lendo do transport `console`.
+A JSON array, not NDJSON. Reason: Datadog API, Elastic Bulk, and Loki Push accept array payloads; NDJSON requires a specific Content-Type or wrappers. If you need NDJSON, serve through a local shipper (`vector`/`fluent-bit`) reading from the `console` transport.
 
-### Falhas
+### Failures
 
-Se o POST falhar (timeout, 5xx, conexão recusada):
+If the POST fails (timeout, 5xx, refused connection):
 
-- **Node:** o `.catch()` no `fetch` escreve uma mensagem de erro no `console.error` e descarta o batch. Buffer NÃO é re-enfileirado.
-- **Python:** `try/except` em torno do `urlopen`, mesma estratégia.
-- **Go:** `client.Do(req)` em goroutine; erros são silenciosos (fire-and-forget).
+- **Node:** the `.catch()` on the `fetch` writes an error message to `console.error` and discards the batch. The buffer is **not** re-enqueued.
+- **Python:** `try/except` around `urlopen`, same strategy.
+- **Go:** `client.Do(req)` in a goroutine; errors are silent (fire-and-forget).
 
-Isso é proposital: **não bloqueamos o processo da aplicação por causa de falha de log**. Se você precisa de garantia de entrega, ponha um shipper local no caminho (Vector → buffer em disco → backend) e use OIL com `console` para alimentar o shipper.
+This is intentional: **we never block the application process because of a logging failure**. If you need delivery guarantees, place a local shipper in the path (Vector → on-disk buffer → backend) and use OIL with `console` to feed the shipper.
 
-### Quando usar
+### When to use
 
-- Quando você não tem agente local e quer mandar JSON direto para `logs.example.com/ingest`.
-- Em arquiteturas serverless onde o stdout não é coletado de forma confiável.
+- When you have no local agent and want to push JSON straight to `logs.example.com/ingest`.
+- In serverless architectures where stdout collection is not reliable.
 
-### Quando não usar
+### When not to use
 
-- Em produção crítica sem retry de borda. Use `console` + agente.
-- Sob altíssima cardinalidade de log (>10k QPS) — o batch sync vai ficar enorme. Reduza `batchSize` para 25 e `flushIntervalMs` para 500.
+- In critical production without edge retry. Use `console` + an agent.
+- Under very high log cardinality (>10k QPS) — the sync batch grows large. Lower `batchSize` to 25 and `flushIntervalMs` to 500.
 
-## Múltiplos transports simultâneos
+## Multiple transports at once
 
 ```js
 configure({ transports: ['console', 'file', 'remote'], ... });
 log('hello', 'info');
 ```
 
-Comportamento:
+Behavior:
 
-1. JSON é montado uma vez.
-2. **Redaction** é aplicada **uma vez** sobre a entry (não por transport).
-3. Cada transport recebe o **mesmo string** redatado.
-4. Falha em um não afeta os outros.
+1. The JSON is built once.
+2. **Redaction** is applied **once** to the entry (not per transport).
+3. Each transport receives the **same redacted string**.
+4. A failure in one does not affect the others.
 
-Ordem de dispatch interna: console → file → remote. Não há garantia de que a entrada apareça no console **antes** do file write completar — os três rodam em paralelo (na medida do possível, dado o single-threaded event loop em Node/Python).
+Internal dispatch order: console → file → remote. There's no guarantee that the entry appears on the console **before** the file write completes — the three run in parallel (to the extent allowed by the single-threaded event loop in Node/Python).
 
-## Próximo passo
+## Next
 
-→ [06 · Formatters](06-formatters.md) — `default`, `datadog`, `elastic` campo-a-campo.
+→ [06 · Formatters](06-formatters.md) — `default`, `datadog`, `elastic` field-by-field.

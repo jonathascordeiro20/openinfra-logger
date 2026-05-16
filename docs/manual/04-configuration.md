@@ -1,24 +1,24 @@
-# 04 · Configuração
+# 04 · Configuration
 
 [← back to manual index](README.md)
 
-Cada runtime tem uma única função/método de configuração. A semântica é a mesma: você passa um objeto/struct com os campos que quer mudar; os omitidos mantêm o default.
+Each runtime has a single configuration function/method. Semantics are the same: you pass an object/struct with the fields you want to change; omitted fields keep their defaults.
 
-## Campos comuns aos 4 runtimes
+## Fields shared across all 4 runtimes
 
-| Campo | Tipo | Default | O que faz |
+| Field | Type | Default | Purpose |
 |---|---|---|---|
-| `transports` | array de strings | `["console"]` | Quais transports ativar (`console`, `file`, `remote`) |
-| `filePath` / `file_path` / `FilePath` | string | `"./app.log"` | Path absoluto ou relativo para o file transport |
-| `remoteUrl` / `remote_url` / `RemoteURL` | string | `null` / `""` | Endpoint POST para o remote transport |
-| `remoteHeaders` / `remote_headers` / `RemoteHeaders` | object | `{"Content-Type":"application/json"}` | Headers HTTP do remote |
-| `defaultMetadata` / `default_metadata` / `DefaultMetadata` | object | `{}` | Campos que entram em **toda** entrada |
-| `formatter` / `Formatter` | string | `"default"` | `default`, `datadog` ou `elastic` |
-| `redactKeys` / `redact_keys` | array de strings | `["password","token","secret","api_key","credit_card"]` | Lista de keys (case-insensitive) substituídas por `[REDACTED]` |
-| `batchSize` / `batch_size` | int | `100` | Tamanho do batch do remote transport |
-| `flushIntervalMs` / `flush_interval_ms` | int | `2000` | Janela máxima (ms) antes do flush forçado do batch |
+| `transports` | array of strings | `["console"]` | Which transports to enable (`console`, `file`, `remote`) |
+| `filePath` / `file_path` / `FilePath` | string | `"./app.log"` | Absolute or relative path for the file transport |
+| `remoteUrl` / `remote_url` / `RemoteURL` | string | `null` / `""` | POST endpoint for the remote transport |
+| `remoteHeaders` / `remote_headers` / `RemoteHeaders` | object | `{"Content-Type":"application/json"}` | HTTP headers for the remote |
+| `defaultMetadata` / `default_metadata` / `DefaultMetadata` | object | `{}` | Fields injected into **every** entry |
+| `formatter` / `Formatter` | string | `"default"` | `default`, `datadog`, or `elastic` |
+| `redactKeys` / `redact_keys` | array of strings | `["password","token","secret","api_key","credit_card"]` | Keys (case-insensitive) replaced with `[REDACTED]` |
+| `batchSize` / `batch_size` | int | `100` | Batch size for the remote transport |
+| `flushIntervalMs` / `flush_interval_ms` | int | `2000` | Maximum window (ms) before a forced batch flush |
 
-## Diferenças entre runtimes
+## Per-runtime differences
 
 ### Node.js — `configure(options)`
 
@@ -38,7 +38,7 @@ configure({
 });
 ```
 
-**Semântica:** `configure()` faz **merge** com o estado anterior (`Object.assign`). Você pode chamar várias vezes; apenas os campos que passar mudam.
+**Semantics:** `configure()` **merges** with the previous state (`Object.assign`). You can call it multiple times; only the fields you pass change.
 
 ### Python — `configure(**kwargs)`
 
@@ -58,7 +58,7 @@ configure(
 )
 ```
 
-**Semântica:** os argumentos são keyword-only e fazem **merge** com o config anterior via `dict.update`.
+**Semantics:** arguments are keyword-only and **merge** via `dict.update`.
 
 ### Go — `Configure(cfg Config)`
 
@@ -78,9 +78,9 @@ openinfralogger.Configure(openinfralogger.Config{
 })
 ```
 
-**Semântica:** `Configure(cfg Config)` **substitui** o struct inteiro (não há merge). Sempre passe todos os campos que você quer manter; campos zero-value (`""`, `nil`) substituem os defaults.
+**Semantics:** `Configure(cfg Config)` **replaces** the whole struct (no merge). Always pass every field you want to keep; zero-value fields (`""`, `nil`) overwrite the defaults.
 
-**Conhecida** (v0.1.0): não há `RedactKeys`, `BatchSize`, `FlushIntervalMs` ainda. Redaction e batching nativos são roadmap para v0.2 do Go.
+**Known (v0.1.0):** `RedactKeys`, `BatchSize`, `FlushIntervalMs` don't exist yet. Native redaction and batching in Go are on the v0.2 roadmap.
 
 ### Rust — `Logger::new(Config)`
 
@@ -101,13 +101,13 @@ let cfg = Config {
 let logger = Logger::new(cfg);
 ```
 
-**Semântica:** sem mutável global. Cada `Logger` tem o próprio `Config`. Você pode criar múltiplos loggers com configs distintos (e.g. um para errors em arquivo, outro para info em stdout).
+**Semantics:** no global mutable. Each `Logger` owns its `Config`. You can create multiple loggers with different configs (e.g. one for errors to file, another for info to stdout).
 
-**Conhecida** (v0.1.0): a struct `Config` em Rust ainda não expõe `formatter`, `redact_keys`, `remote_*`. Tudo isso chega na v0.2.
+**Known (v0.1.0):** the Rust `Config` struct does not expose `formatter`, `redact_keys`, `remote_*` yet. All of that lands in v0.2.
 
 ## Log levels
 
-Os 4 níveis válidos são `debug`, `info`, `warn`, `error`. Tudo case-insensitive na entrada:
+The 4 valid levels are `debug`, `info`, `warn`, `error`. Input is case-insensitive:
 
 ```js
 log('msg', 'ERROR');   // → "level":"error"
@@ -115,9 +115,9 @@ log('msg', 'Warn');    // → "level":"warn"
 log('msg', 'verbose'); // emit warning, then "level":"info"
 ```
 
-Nível inválido **não derruba o processo** — vira `info` com um warning estruturado em stderr (formato JSON, igual ao log normal). Isso é proposital: logs nunca devem matar produção.
+An invalid level **never crashes the process** — it becomes `info` with a structured warning on stderr (JSON, like a normal log). This is intentional: logs must never kill production.
 
-### Hierarquia numérica
+### Numeric hierarchy
 
 ```
 debug = 10
@@ -126,9 +126,9 @@ warn  = 30
 error = 40
 ```
 
-Útil se você quer filtrar por threshold no consumo. Nas v0.1, **OIL não filtra** — todo nível é emitido. Se você quer "produção só ≥ info", filtre no shipper (Vector, fluent-bit) ou na query do Datadog.
+Useful if you want to filter by threshold at consumption time. In v0.1, **OIL does not filter** — every level is emitted. If you want "prod only ≥ info", filter in the shipper (Vector, fluent-bit) or in the Datadog/Elastic query.
 
-## Defaults consolidados
+## Consolidated defaults
 
 ```js
 {
@@ -144,11 +144,11 @@ error = 40
 }
 ```
 
-Esses são os valores em produção se você nunca chamar `configure()`.
+These are the production values if you never call `configure()`.
 
-## Padrões de configuração
+## Configuration patterns
 
-### "Dev local"
+### "Local dev"
 
 ```js
 configure({
@@ -158,17 +158,17 @@ configure({
 });
 ```
 
-### "Produção em Datadog"
+### "Production into Datadog"
 
 ```js
 configure({
-  transports: ['console'],  // o Datadog Agent coleta de stdout
+  transports: ['console'],  // Datadog Agent collects from stdout
   formatter: 'datadog',
   defaultMetadata: { service: 'checkout-api', env: 'production' },
 });
 ```
 
-### "Produção em Elastic com retenção em arquivo"
+### "Production into Elastic with on-disk retention"
 
 ```js
 configure({
@@ -179,15 +179,15 @@ configure({
 });
 ```
 
-### "Edge / serverless / sem disco"
+### "Edge / serverless / no local disk"
 
 ```js
 configure({
   transports: ['console', 'remote'],
   remoteUrl: 'https://logs.example.com/ingest',
   remoteHeaders: { 'Authorization': 'Bearer ' + process.env.LOG_TOKEN },
-  batchSize: 25,         // menor: invocations são curtas
-  flushIntervalMs: 500,  // mais agressivo: o Worker termina em 30 s
+  batchSize: 25,         // smaller: invocations are short
+  flushIntervalMs: 500,  // more aggressive: the Worker exits in 30s
 });
 ```
 
@@ -198,16 +198,16 @@ configure({
   redactKeys: [
     // defaults
     'password', 'token', 'secret', 'api_key', 'credit_card',
-    // adicionais
+    // additional
     'cpf', 'rg', 'cnpj', 'phone', 'email', 'ssn', 'address',
     'birthdate', 'mother_name'
   ],
 });
 ```
 
-## Configuração programática vs ambiente
+## Programmatic config vs environment
 
-A v0.1 **não lê variáveis de ambiente automaticamente**. Você decide:
+v0.1 **does not read environment variables automatically**. You decide:
 
 ```js
 configure({
@@ -219,8 +219,8 @@ configure({
 });
 ```
 
-É proposital: a v0.1 não quer adivinhar quais env vars são suas, e quer manter a configuração explícita e auditável.
+This is intentional: v0.1 doesn't want to guess which env vars are yours, and wants configuration to stay explicit and auditable.
 
-## Próximo passo
+## Next
 
-→ [05 · Transports](05-transports.md) — comportamento detalhado de `console`, `file`, `remote`.
+→ [05 · Transports](05-transports.md) — detailed behavior of `console`, `file`, `remote`.

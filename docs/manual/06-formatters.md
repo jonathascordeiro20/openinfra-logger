@@ -2,21 +2,21 @@
 
 [← back to manual index](README.md)
 
-Um **formatter** é uma transformação aplicada ao JSON da entrada **depois** do merge de metadata e **antes** da redação. Existem 3 em v0.1: `default`, `datadog`, `elastic`.
+A **formatter** is a transformation applied to the entry JSON **after** metadata merge and **before** redaction. There are 3 in v0.1: `default`, `datadog`, `elastic`.
 
-## Quando usar qual
+## When to use which
 
-| Você usa… | Use o formatter… |
+| You're using… | Use formatter… |
 |---|---|
-| stdout que algum agente (Datadog Agent, fluent-bit, Vector) já normaliza | `default` |
-| Datadog HTTP intake direto, sem agente | `datadog` |
-| Elastic / OpenSearch / Logstash que ingere ECS | `elastic` |
-| Loki, Splunk, CloudWatch | `default` (LogQL e Splunk Search aceitam shape canônico) |
-| Backend customizado da sua empresa | `default` |
+| stdout that some agent (Datadog Agent, fluent-bit, Vector) already normalizes | `default` |
+| Datadog HTTP intake directly, no agent | `datadog` |
+| Elastic / OpenSearch / Logstash ingesting ECS | `elastic` |
+| Loki, Splunk, CloudWatch | `default` (LogQL and Splunk Search accept the canonical shape) |
+| Custom in-house backend | `default` |
 
-## Comparação campo-a-campo
+## Field-by-field comparison
 
-Entrada (antes do formatter):
+Input (before the formatter):
 
 ```json
 {
@@ -44,7 +44,7 @@ Entrada (antes do formatter):
 }
 ```
 
-(idêntico — sem transformação)
+(identical — no transformation)
 
 ### `formatter: 'datadog'`
 
@@ -60,15 +60,15 @@ Entrada (antes do formatter):
 }
 ```
 
-Mapeamentos:
+Mappings:
 
-| Original | Vira |
+| Original | Becomes |
 |---|---|
 | `level` | `status` |
 | `trace_id` | `dd.trace_id` |
 | `span_id` | `dd.span_id` |
 
-Os demais campos são preservados.
+Other fields are preserved.
 
 ### `formatter: 'elastic'`
 
@@ -84,20 +84,20 @@ Os demais campos são preservados.
 }
 ```
 
-Mapeamentos:
+Mappings:
 
-| Original | Vira |
+| Original | Becomes |
 |---|---|
 | `timestamp` | `@timestamp` |
 | `level` | `log.level` |
-| `trace_id` | (mantém — ECS aceita assim) |
-| `span_id` | (mantém) |
+| `trace_id` | (kept — ECS accepts as-is) |
+| `span_id` | (kept) |
 
 ## Edge cases
 
-### O `service` em ECS
+### `service` under ECS
 
-O ECS prefere `service.name` em vez de `service` no top level. OIL não faz essa renomeação automaticamente em v0.1 — se você quer estritamente ECS, passe `service.name` no `defaultMetadata`:
+ECS prefers `service.name` over a top-level `service`. OIL doesn't make this rename automatically in v0.1 — if you need strict ECS, pass `service.name` in `defaultMetadata`:
 
 ```js
 configure({
@@ -109,56 +109,56 @@ configure({
 });
 ```
 
-### O `trace_id` sem span
+### `trace_id` with no span
 
-Se nenhum span OTel está ativo, OIL **não emite** `trace_id` (e portanto também não emite `dd.trace_id`). Nada aparece com valor `null` ou `""`. O Datadog/Elastic não recebe uma key vazia.
+If no OTel span is active, OIL **does not emit** `trace_id` (and therefore also does not emit `dd.trace_id`). Nothing shows up with `null` or `""`. Datadog/Elastic never receive an empty key.
 
-### Caller wins, sempre
+### Caller wins, always
 
-Se você passar `trace_id` explicitamente no metadata, OIL respeita:
+If you pass `trace_id` explicitly in metadata, OIL honors it:
 
 ```js
 log('msg', 'info', { trace_id: 'manual-trace-123' });
 ```
 
-Sai como `trace_id: "manual-trace-123"` (ou `dd.trace_id: "manual-trace-123"` no formatter datadog). Útil para emular um span de teste ou backfill.
+Outputs as `trace_id: "manual-trace-123"` (or `dd.trace_id: "manual-trace-123"` under the datadog formatter). Useful for simulating a test span or backfilling.
 
-### Misturar formatter com defaultMetadata
+### Mixing formatter with defaultMetadata
 
 ```js
 configure({
   formatter: 'datadog',
-  defaultMetadata: { service: 'api', status: 'override' }, // ← cuidado
+  defaultMetadata: { service: 'api', status: 'override' }, // ← careful
 });
 
 log('test', 'info');
 // → { "timestamp": "...", "message": "test", "status": "override", ... }
 ```
 
-O `defaultMetadata.status` **sobrescreve** o que o formatter datadog injetou (porque o formatter roda antes do merge final). Em geral, **não use** chaves que colidem com os mapeamentos do formatter. Use os nomes neutros (`level`, `trace_id`) e deixe o formatter fazer o trabalho.
+The `defaultMetadata.status` **overrides** what the datadog formatter just injected (because the formatter runs before the final merge). In general, **do not** use keys that collide with the formatter's mappings. Use neutral names (`level`, `trace_id`) and let the formatter do the work.
 
-## Como adicionar um formatter customizado
+## How to add a custom formatter
 
-Em v0.1.0 a lista de formatters é fixa no código. Para um formatter custom (e.g. Splunk com prefixo `splunk.`), você tem duas opções:
+In v0.1.0 the formatter list is fixed in code. For a custom formatter (e.g. Splunk with `splunk.` prefix), you have two options:
 
-1. **Pre-pos no defaultMetadata.** Funciona para 80% dos casos.
-2. **Pipeline shipper.** Configure OIL com `default` e converta no fluent-bit/Vector — é onde mapeamentos custom realmente pertencem.
+1. **Pre-position in defaultMetadata.** Works for 80% of cases.
+2. **Shipper pipeline.** Configure OIL with `default` and convert in fluent-bit/Vector — that's where custom mappings really belong.
 
-A v0.2 vai permitir passar uma função `formatter: (entry) => entry`. Issue aberta no [GitHub](https://github.com/jonathascordeiro20/openinfra-logger/issues) — PRs bem-vindos.
+v0.2 will accept a `formatter: (entry) => entry` function. [Issue open on GitHub](https://github.com/jonathascordeiro20/openinfra-logger/issues) — PRs welcome.
 
-## Compatibilidade com a chain
+## Compatibility with the pipeline
 
-O formatter sempre roda **antes** da redação:
+The formatter always runs **before** redaction:
 
 ```
 1. merge metadata
-2. formatter           ← renomeia keys (level → status, etc)
-3. redaction           ← agora opera sobre os nomes renomeados
+2. formatter           ← renames keys (level → status, etc)
+3. redaction           ← now operates on the renamed names
 4. JSON.stringify
 ```
 
-Implicação prática: se você tem `redactKeys: ['status']` (incomum, mas hipoteticamente), e usa o formatter datadog, **o `status` da datadog vai virar `[REDACTED]`**. Por isso a redact list default só tem nomes universalmente sensíveis.
+Practical implication: if you have `redactKeys: ['status']` (unusual, but hypothetically), and you use the datadog formatter, **the datadog `status` becomes `[REDACTED]`**. That's why the default redact list only contains universally sensitive names.
 
-## Próximo passo
+## Next
 
-→ [07 · Auto-redaction](07-redaction.md) — algoritmo recursivo, casos limítrofes, e quando ele **não** te salva.
+→ [07 · Auto-redaction](07-redaction.md) — the recursive algorithm, edge cases, and when it **won't** save you.

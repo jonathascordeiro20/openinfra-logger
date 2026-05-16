@@ -2,11 +2,11 @@
 
 [← back to manual index](README.md)
 
-Guias práticos para sair de loggers populares **sem reescrever a aplicação**. Em todos os casos, a estratégia é a mesma: criar uma fina camada de compatibilidade que mapeia a API antiga → OIL.
+Practical guides for leaving popular loggers **without rewriting your application**. In every case, the strategy is the same: build a thin compatibility layer that maps the old API → OIL.
 
 ## From Pino (Node)
 
-### A API que você tinha
+### The API you had
 
 ```js
 const pino = require('pino');
@@ -19,33 +19,33 @@ logger.info({ order_id: 'o_4419' }, 'order placed');
 logger.error({ err }, 'something broke');
 ```
 
-### A API equivalente em OIL
+### The equivalent in OIL
 
 ```js
 const { log, configure } = require('@jonathascordeiro20/openinfra-logger');
 
 configure({
   defaultMetadata: { service: 'checkout', env: 'production' },
-  redactKeys: ['password', 'authorization'],  // OIL redacta por key name, não por path
-  formatter: 'default',  // ou 'datadog' / 'elastic' conforme seu backend
+  redactKeys: ['password', 'authorization'],  // OIL redacts by key name, not by path
+  formatter: 'default',  // or 'datadog' / 'elastic' per your backend
 });
 
-// Note: ordem dos args é (message, level, metadata) — Pino é (metadata, message)
+// Note: arg order is (message, level, metadata) — Pino is (metadata, message)
 log('order placed', 'info', { order_id: 'o_4419' });
 log('something broke', 'error', { err: { message: err.message, stack: err.stack } });
 ```
 
-### Shim de compatibilidade (drop-in)
+### Drop-in compatibility shim
 
 ```js
-// pino-shim.js — substitua `require('pino')` por `require('./pino-shim')`
+// pino-shim.js — replace `require('pino')` with `require('./pino-shim')`
 const { log, configure } = require('@jonathascordeiro20/openinfra-logger');
 
 function makeLogger(opts = {}) {
   if (opts.base) configure({ defaultMetadata: opts.base });
   if (opts.redact) {
     const keys = (Array.isArray(opts.redact) ? opts.redact : opts.redact.paths || [])
-      .map(p => p.split('.').pop()); // OIL trabalha em key, não em path
+      .map(p => p.split('.').pop()); // OIL works by key, not by path
     configure({ redactKeys: keys });
   }
   return {
@@ -64,19 +64,19 @@ function makeLogger(opts = {}) {
 module.exports = makeLogger;
 ```
 
-### Diferenças que valem saber
+### Differences worth knowing
 
-| Comportamento | Pino | OIL |
+| Behavior | Pino | OIL |
 |---|---|---|
-| Redação | por **path** (e.g. `req.headers.authorization`) | por **key name** (case-insensitive) |
-| Output | NDJSON | NDJSON (uma linha por entry, JSON em transport remote vira array) |
-| Throughput baseline | ~150k events/s/proc | ~10k events/s/proc |
-| Filhos via `.child()` | suportado | parcial — `configure({ defaultMetadata })` é global, não nested |
-| Custom levels | suportado | não (apenas debug/info/warn/error) |
+| Redaction | by **path** (e.g. `req.headers.authorization`) | by **key name** (case-insensitive) |
+| Output | NDJSON | NDJSON (one line per entry; remote transport sends an array body) |
+| Baseline throughput | ~150k events/s/proc | ~10k events/s/proc |
+| `.child()` bindings | supported | partial — `configure({ defaultMetadata })` is global, not nested |
+| Custom levels | supported | not supported (only debug/info/warn/error) |
 
 ## From Winston (Node)
 
-### A API que você tinha
+### The API you had
 
 ```js
 const winston = require('winston');
@@ -93,7 +93,7 @@ const logger = winston.createLogger({
 logger.info('order placed', { order_id: 'o_4419' });
 ```
 
-### Em OIL
+### In OIL
 
 ```js
 const { log, configure } = require('@jonathascordeiro20/openinfra-logger');
@@ -107,20 +107,20 @@ configure({
 log('order placed', 'info', { order_id: 'o_4419' });
 ```
 
-### Diferenças
+### Differences
 
 | | Winston | OIL |
 |---|---|---|
-| Pluggable transports | ✓ (HTTP, Mongo, etc) | ✗ (apenas console/file/remote nativo) |
-| Format DSL | ✓ (`combine`, `printf`, `colorize`) | ✗ (JSON puro) |
-| Levels customizados | ✓ | ✗ |
-| Pretty print | via format | use `jq -C` ou `pino-pretty` no consumo |
+| Pluggable transports | ✓ (HTTP, Mongo, etc.) | ✗ (only native console/file/remote) |
+| Format DSL | ✓ (`combine`, `printf`, `colorize`) | ✗ (plain JSON) |
+| Custom levels | ✓ | ✗ |
+| Pretty print | via format | use `jq -C` or `pino-pretty` at consumption time |
 
-Se você usa transports custom do Winston (Mongo, etc), considere se isso ainda faz sentido — geralmente é melhor escrever em JSON e ter um shipper (Vector / fluent-bit) tratar o roteamento.
+If you use custom Winston transports (Mongo, etc.), consider whether they still make sense — usually it's better to write JSON and have a shipper (Vector / fluent-bit) handle routing.
 
 ## From structlog (Python)
 
-### A API que você tinha
+### The API you had
 
 ```python
 import structlog
@@ -137,7 +137,7 @@ log = structlog.get_logger()
 log.info("order.placed", order_id="o_4419", user_id="u_8821")
 ```
 
-### Em OIL
+### In OIL
 
 ```python
 from openinfra_logger import log, configure
@@ -147,7 +147,7 @@ configure(default_metadata={"service": "checkout"})
 log("order.placed", "info", {"order_id": "o_4419", "user_id": "u_8821"})
 ```
 
-### Shim para drop-in
+### Drop-in shim
 
 ```python
 # structlog_shim.py
@@ -173,23 +173,23 @@ def get_logger(**bindings):
 ```
 
 ```python
-# Substitua `import structlog` por `import structlog_shim as structlog`
+# Replace `import structlog` with `import structlog_shim as structlog`
 log = structlog.get_logger(service="checkout")
 log.info("order.placed", order_id="o_4419")
 ```
 
-### Diferenças
+### Differences
 
 | | structlog | OIL |
 |---|---|---|
-| Processor chain configurável | ✓ | ✗ (3 formatters fixos) |
-| Context vars / thread-local | ✓ | ✗ (`defaultMetadata` é global) |
+| Configurable processor chain | ✓ | ✗ (3 fixed formatters) |
+| Context vars / thread-local | ✓ | ✗ (`defaultMetadata` is global) |
 | Custom renderers | ✓ | ✗ |
-| OTel integration | manual | automática |
+| OTel integration | manual | automatic |
 
 ## From zap (Go)
 
-### A API que você tinha
+### The API you had
 
 ```go
 import "go.uber.org/zap"
@@ -203,7 +203,7 @@ logger.Info("order placed",
 )
 ```
 
-### Em OIL
+### In OIL
 
 ```go
 import openinfralogger "github.com/jonathascordeiro20/openinfra-logger/go"
@@ -239,41 +239,41 @@ func (l *Logger) Info(msg string, fields ...Field) {
     for _, f := range fields { md[f.Key] = f.Val }
     openinfralogger.Log(msg, "info", md)
 }
-// (idem para Debug/Warn/Error)
+// (same for Debug/Warn/Error)
 
 func (l *Logger) Sync() error { return nil }
 
 type Field struct{ Key string; Val interface{} }
 func String(k, v string) Field  { return Field{k, v} }
 func Int(k string, v int) Field { return Field{k, v} }
-// ... e os outros helpers de zap.X
+// ... and the other zap.X helpers
 ```
 
-### Diferenças
+### Differences
 
 | | zap | OIL (Go) |
 |---|---|---|
-| Sugared logger | ✓ | ✗ (uma única API) |
-| Field allocator pool | ✓ | ✗ (alocação por chamada) |
+| Sugared logger | ✓ | ✗ (one API) |
+| Field allocator pool | ✓ | ✗ (allocation per call) |
 | Custom encoders | ✓ | ✗ |
-| Levels customizados | ✓ | ✗ |
+| Custom levels | ✓ | ✗ |
 | Sampling | ✓ | ✗ |
-| Throughput baseline | ~1.5M events/s | ~50k events/s |
+| Baseline throughput | ~1.5M events/s | ~50k events/s |
 
-zap é dramaticamente mais rápido em Go. OIL vale a pena quando você quer **paridade com Node/Python/Rust**, não throughput máximo.
+zap is dramatically faster in Go. OIL is worth it when you want **parity with Node/Python/Rust**, not maximum throughput.
 
 ## From tracing (Rust)
 
-A v0.1 do OIL Rust é primitiva demais para substituir `tracing` adequadamente. **Recomendação: mantenha tracing no Rust** e use OIL apenas se você precisa do JSON shape exato dos outros runtimes (o que é raro num serviço puro Rust). Para a v0.2, planejamos uma camada `tracing-subscriber` que delega para OIL — então você fica com a ergonomia do `tracing!(info, "msg", k = v)` e o output canônico.
+OIL's Rust v0.1 is too primitive to properly replace `tracing`. **Recommendation: keep tracing on Rust** and use OIL only if you need the exact JSON shape of the other runtimes (rare in a pure-Rust service). For v0.2, we plan a `tracing-subscriber` layer that delegates to OIL — so you keep the ergonomics of `tracing!(info, "msg", k = v)` and the canonical output.
 
-## Plano de migração geral (qualquer logger)
+## General migration plan (any logger)
 
-1. **Adicione OIL em paralelo** ao logger antigo. Configure os dois em um arquivo `logging.js` central.
-2. **Em duas linhas críticas** (rota mais quente + handler de erro), emita pelos dois loggers.
-3. **Compare os JSONs** numa pipe de teste. Aprove o shape canônico no seu shipper / backend.
-4. **Substitua progressivamente** — um módulo por dia. Não force big-bang.
-5. **Remova o logger antigo** apenas depois que todos os testes de produção passaram por uma semana.
+1. **Add OIL alongside** the old logger. Configure both in a central `logging.js`.
+2. **In two critical lines** (the hottest route + the error handler), emit through both loggers.
+3. **Compare the JSONs** in a test pipe. Approve the canonical shape in your shipper/backend.
+4. **Replace progressively** — one module per day. Don't force a big-bang.
+5. **Remove the old logger** only after all production tests have passed for a week.
 
-## Próximo passo
+## Next
 
-→ [12 · Troubleshooting](12-troubleshooting.md) — sintomas comuns e correções.
+→ [12 · Troubleshooting](12-troubleshooting.md) — common symptoms and fixes.

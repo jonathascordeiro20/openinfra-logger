@@ -1,21 +1,21 @@
-# 02 · Conceitos
+# 02 · Concepts
 
 [← back to manual index](README.md)
 
-## O contrato JSON
+## The JSON contract
 
-Toda chamada `log(message, level, metadata)` produz uma linha JSON com pelo menos estes campos:
+Every call to `log(message, level, metadata)` produces a JSON line with at least these fields:
 
-| Campo | Tipo | Sempre presente? | Notas |
+| Field | Type | Always present? | Notes |
 |---|---|---|---|
-| `timestamp` | string ISO-8601 com `Z` final | sim (formatter `default`) | renomeia para `@timestamp` no formatter `elastic` |
-| `level` | string em minúsculas | sim (formatter `default`) | renomeia para `status` (datadog) ou `log.level` (elastic) |
-| `message` | string | sim | livre |
-| campos de `defaultMetadata` | qualquer JSON-serializable | quando configurado | merge global |
-| `trace_id` / `span_id` | string hex | quando há span OTel ativo | renomeia para `dd.trace_id`/`dd.span_id` no datadog |
-| campos do `metadata` da chamada | qualquer JSON-serializable | quando passado | **sobrescreve** os anteriores (caller wins) |
+| `timestamp` | ISO-8601 string with trailing `Z` | yes (formatter `default`) | renamed to `@timestamp` under formatter `elastic` |
+| `level` | lowercase string | yes (formatter `default`) | renamed to `status` (datadog) or `log.level` (elastic) |
+| `message` | string | yes | free-form |
+| fields from `defaultMetadata` | any JSON-serializable | when configured | global merge |
+| `trace_id` / `span_id` | hex string | when an OTel span is active | renamed to `dd.trace_id`/`dd.span_id` under datadog |
+| fields from the call's `metadata` | any JSON-serializable | when passed | **overrides** earlier fields (caller wins) |
 
-### Ordem de merge
+### Merge order
 
 ```
        ┌──────────────────┐
@@ -24,45 +24,45 @@ Toda chamada `log(message, level, metadata)` produz uma linha JSON com pelo meno
        │ 3. message       │
        └──────────────────┘
               ↓
-       ┌──────────────────┐
-       │ 4. defaultMetadata (de configure()) │
-       └──────────────────┘
+       ┌──────────────────────────────────────┐
+       │ 4. defaultMetadata (from configure()) │
+       └──────────────────────────────────────┘
               ↓
-       ┌──────────────────┐
+       ┌──────────────────────────────────────┐
        │ 5. trace context (extract_trace_context()) │
-       └──────────────────┘
+       └──────────────────────────────────────┘
               ↓
-       ┌──────────────────┐
-       │ 6. metadata da chamada (caller wins) │
-       └──────────────────┘
+       ┌──────────────────────────────────────┐
+       │ 6. metadata from the call (caller wins) │
+       └──────────────────────────────────────┘
               ↓
-       ┌──────────────────┐
+       ┌──────────────────────────────────────┐
        │ 7. formatter (default/datadog/elastic) │
-       └──────────────────┘
+       └──────────────────────────────────────┘
               ↓
-       ┌──────────────────┐
+       ┌──────────────────────────────────────┐
        │ 8. redaction (recursive)             │
-       └──────────────────┘
+       └──────────────────────────────────────┘
               ↓
-       ┌──────────────────┐
+       ┌──────────────────────────────────────┐
        │ 9. JSON.stringify → transports       │
-       └──────────────────┘
+       └──────────────────────────────────────┘
 ```
 
-Esse pipeline é determinístico e idêntico nas quatro implementações.
+This pipeline is deterministic and identical across all four implementations.
 
-## Os quatro níveis
+## The four levels
 
 ```
 debug = 10     dev-only spam, deeply technical
 info  = 20     normal flow, business events
 warn  = 30     attention but no human action yet
-error = 40     attention now, on-call relevance
+error = 40     attention now, on-call relevant
 ```
 
-Níveis inválidos caem silenciosamente para `info` (com um warning estruturado em stderr explicando o que aconteceu — só uma vez por nível desconhecido na sessão).
+Invalid levels silently fall back to `info` (with a structured warning on stderr explaining what happened — only once per unknown level per session).
 
-## Os três transports
+## The three transports
 
 ```
 ┌────────────┐  ┌────────────┐  ┌────────────┐
@@ -76,11 +76,11 @@ Níveis inválidos caem silenciosamente para `info` (com um warning estruturado 
 └────────────┘  └────────────┘  └────────────┘
 ```
 
-A lista `transports: ['console','file','remote']` dispara os três simultaneamente. Cada um é independente — falha de um não interrompe os outros.
+A `transports: ['console','file','remote']` list fires all three simultaneously. Each is independent — a failure in one doesn't break the others.
 
-Detalhes operacionais em [05 · Transports](05-transports.md).
+Operational detail in [05 · Transports](05-transports.md).
 
-## Os três formatters
+## The three formatters
 
 | Formatter | `timestamp` | `level` | `trace_id` | `span_id` |
 |---|---|---|---|---|
@@ -88,9 +88,9 @@ Detalhes operacionais em [05 · Transports](05-transports.md).
 | `datadog` | `timestamp` | `status` | `dd.trace_id` | `dd.span_id` |
 | `elastic` | `@timestamp` | `log.level` | `trace_id` | `span_id` |
 
-Detalhes em [06 · Formatters](06-formatters.md).
+Detail in [06 · Formatters](06-formatters.md).
 
-## A regra do auto-redaction
+## The auto-redaction rule
 
 ```
 For every value V in the log entry:
@@ -106,11 +106,11 @@ For every value V in the log entry:
     leave V as-is
 ```
 
-Defaults: `password`, `token`, `secret`, `api_key`, `credit_card`. Casos-limite em [07 · Auto-redaction](07-redaction.md).
+Defaults: `password`, `token`, `secret`, `api_key`, `credit_card`. Edge cases in [07 · Auto-redaction](07-redaction.md).
 
-## A arquitetura por runtime
+## Per-runtime architecture
 
-Cada implementação tem cinco peças, escritas só com a stdlib:
+Each implementation has five pieces, written using only the standard library:
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
@@ -142,16 +142,16 @@ Cada implementação tem cinco peças, escritas só com a stdlib:
    └──────────────┘ └──────────────┘ └──────────────────┘
 ```
 
-A diferença entre runtimes está na implementação:
+What differs between runtimes is the implementation, not the pipeline:
 
-- **Node:** `Promise`-chain serializa append em arquivo, `setTimeout` agenda flush remoto.
-- **Python:** `threading.Timer` agenda flush remoto, `urllib.request.urlopen` faz POST.
-- **Go:** `fmt.Println` direto, `os.OpenFile`, `goroutine` fire-and-forget para remote.
-- **Rust:** zero-dep JSON builder (`escape_json_string` RFC 8259-compliant), `OpenOptions`.
+- **Node:** a `Promise` chain serializes file appends, `setTimeout` schedules the remote flush.
+- **Python:** `threading.Timer` schedules the remote flush, `urllib.request.urlopen` does the POST.
+- **Go:** `fmt.Println` directly, `os.OpenFile`, a fire-and-forget goroutine for the remote.
+- **Rust:** zero-dep JSON builder (`escape_json_string`, RFC 8259-compliant), `OpenOptions` for files.
 
 ## Zero-dependency claim
 
-O que a frase quer dizer:
+What the phrase means:
 
 ```
 ✓  npm install @jonathascordeiro20/openinfra-logger
@@ -167,14 +167,14 @@ O que a frase quer dizer:
    → 0 transitive modules added
 ```
 
-O que a frase **não** quer dizer:
+What the phrase **does not** mean:
 
-- **Não** significa "zero network calls". O remote transport faz HTTP. O log analyzer com `--llm=anthropic` chama uma API externa. O OpenTelemetry hook não chama nada, mas requer que **você** já tenha `@opentelemetry/api` ou `opentelemetry-api` instalado se quiser que ele detecte spans.
-- **Não** significa "compatível com `no_std` em Rust" — a v0.1 usa `std::fs` para o file transport. Uma variant `no_std` está no roadmap.
-- **Não** significa que os testes não usam deps — usam o framework de teste de cada linguagem (`node:test`, `unittest`, `testing`, `cargo test`). Isso é zero dep em **produção**, não em desenvolvimento.
+- It does **not** mean "zero network calls". The remote transport speaks HTTP. The log analyzer with `--llm=anthropic` calls an external API. The OpenTelemetry hook makes no call but requires that **you** have `@opentelemetry/api` or `opentelemetry-api` installed in your project if you want it to detect spans.
+- It does **not** mean "`no_std`-compatible in Rust" — v0.1 uses `std::fs` for the file transport. A `no_std` variant is on the roadmap.
+- It does **not** mean tests use no dependencies — they use each language's testing framework (`node:test`, `unittest`, `testing`, `cargo test`). This is zero-dep at **runtime**, not in development.
 
-A interpretação corretamente narrada: **"o pacote em si não traz nenhum outro pacote para a sua árvore de dependências"**.
+The correctly narrated interpretation: **"the package itself brings no other package into your dependency tree."**
 
-## Próximo passo
+## Next
 
-→ [03 · Instalação](03-installation.md) — versões mínimas, comando exato por runtime, e como validar que o install funcionou.
+→ [03 · Installation](03-installation.md) — minimum versions, exact command per runtime, and how to verify the install worked.
