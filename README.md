@@ -16,11 +16,11 @@
 In modern distributed systems, structured logs are foundational infrastructure. Fragmented log formats across services make Datadog/Elastic queries unreliable and incident response slow. OpenInfra Logger addresses that fragmentation with:
 
 - **Consistent observability** — one structured JSON shape across Node, Python, Go and Rust
-- **Zero dependencies** — built from each runtime's stdlib only; no supply-chain surface
-- **Native batching** — buffered remote transport, ~100× fewer egress requests than log-per-call
-- **Auto-redaction** — `password`, `token`, `secret`, `api_key`, `credit_card` replaced with `[REDACTED]` before they touch the wire (LGPD/GDPR-friendly)
-- **OpenTelemetry-aware** — `trace_id` and `span_id` are picked up automatically when a span is active
-- **Datadog & Elastic formatters** — switch the wire payload with a single config line
+- **No third-party packages** — every implementation is built from its language's standard library. Your `node_modules` / `site-packages` / `target/` stays clean and your supply-chain surface is the library itself.
+- **Native batching** — buffered remote transport (Node / Python), ~100× fewer egress requests than log-per-call
+- **Auto-redaction** — `password`, `token`, `secret`, `api_key`, `credit_card` replaced with `[REDACTED]` before they touch the wire (LGPD/GDPR-friendly, recursive, case-insensitive)
+- **OpenTelemetry-aware** — `trace_id` and `span_id` are picked up automatically when a span is active (Node / Python)
+- **Datadog & Elastic (ECS) formatters** — switch the wire payload with a single config line
 
 ## Installation
 
@@ -111,15 +111,32 @@ configure({ formatter: 'datadog' });
 
 Sensitive keys are intercepted recursively before the entry is dispatched to any transport. The default list is `password`, `token`, `secret`, `api_key`, `credit_card` and can be overridden via `redactKeys` in `configure({...})`.
 
-## AI-powered root-cause analysis
+## Log analyzer — local-first, LLM opt-in
 
-OIL ships a CLI that parses your log files, finds anomalies and asks Claude for a diagnosis.
+OIL ships a CLI that runs **fully on your machine** by default. No network call. It produces seven layered analyses:
+
+1. **Clusters** — normalized message shapes ranked by frequency
+2. **Heuristics** — six built-in patterns (timeout cascades, OOM, DB failures, 5xx, rate-limit, auth)
+3. **Stack-trace dedup** — top-3 frames, line numbers and node_modules normalized
+4. **Temporal cascades** — bursts of ≥3 errors within 1 s, with service breakdown
+5. **Anomaly windows** — per-minute z-score over the baseline error rate
+6. **Service-interaction graph** — derived from `trace_id` co-occurrence
+7. **Service breakdown** + observed time window
 
 ```bash
 npm run analyze app.log
 ```
 
-Set the `ANTHROPIC_API_KEY` environment variable for automated API calls, or the tool will print a ready-to-paste prompt for the Claude web interface.
+For an LLM-deepened narrative (root cause in prose + suggested fix), opt in to one of three providers:
+
+```bash
+npm run analyze app.log -- --llm=anthropic   # cloud, needs ANTHROPIC_API_KEY
+npm run analyze app.log -- --llm=ollama      # local LLM via Ollama (localhost:11434)
+npm run analyze app.log -- --llm=openai      # OpenAI-compatible endpoint (LM Studio, vLLM, OpenAI)
+npm run analyze app.log -- --prompt-only     # print the prompt, no API call
+```
+
+Your log lines stay on your machine unless you explicitly choose `--llm=anthropic` or `--llm=openai` (which send to the cloud). The `--llm=ollama` path keeps everything local.
 
 ## Testing
 
