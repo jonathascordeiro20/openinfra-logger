@@ -10,6 +10,15 @@ openinfra-logger-hostinger.zip
 rust/target/
 rust/Cargo.lock
 
+# Python build artifacts
+python/build/
+python/dist/
+python/*.egg-info/
+
+# Benchmark artifacts (transient measurements, never commit)
+benchmarks/*.json
+benchmarks/results/
+
 # Python
 __pycache__/
 *.py[cod]

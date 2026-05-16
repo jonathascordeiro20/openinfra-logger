@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openinfra-logger"
+version = "0.1.0"
+description = "Universal structured logging and observability for Node, Python, Go and Rust — built from the standard library only. Native batching, auto-redaction, OpenTelemetry-aware, with native Datadog and Elastic (ECS) formatters."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+authors = [
+  { name = "Jonathas Cordeiro", email = "jonathas.cordeiro2023@gmail.com" }
+]
+keywords = [
+  "logging", "logger", "structured-logging", "observability",
+  "telemetry", "opentelemetry", "datadog", "elasticsearch",
+  "ecs", "loki", "zero-dependency", "lgpd", "gdpr", "redaction"
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Intended Audience :: System Administrators",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Topic :: System :: Logging",
+  "Typing :: Typed"
+]
+# No runtime dependencies. The package is built from the standard library only.
+dependencies = []
+
+[project.urls]
+Homepage      = "https://openinfralogger.fun"
+Repository    = "https://github.com/jonathascordeiro20/openinfra-logger"
+Documentation = "https://github.com/jonathascordeiro20/openinfra-logger#readme"
+Changelog     = "https://github.com/jonathascordeiro20/openinfra-logger/blob/main/CHANGELOG.md"
+"Bug Tracker" = "https://github.com/jonathascordeiro20/openinfra-logger/issues"
+
+[project.optional-dependencies]
+opentelemetry = ["opentelemetry-api>=1.20"]
+
+[tool.setuptools.packages.find]
+include = ["openinfra_logger*"]
+exclude = ["tests*"]

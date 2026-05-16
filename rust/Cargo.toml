@@ -1,10 +1,21 @@
 [package]
-name = "openinfra_logger"
+name = "openinfra-logger"
 version = "0.1.0"
 edition = "2021"
-authors = ["Jonathas"]
-description = "Critical structured logging and observability library for modern infrastructure"
+rust-version = "1.70"
+authors = ["Jonathas Cordeiro <jonathas.cordeiro2023@gmail.com>"]
+description = "Universal structured logging — zero-dependency, RFC 8259-compliant JSON, file + console transports. Sibling implementations exist for Node.js, Python and Go with identical JSON output."
+license = "MIT"
+repository = "https://github.com/jonathascordeiro20/openinfra-logger"
+homepage = "https://openinfralogger.fun"
+documentation = "https://docs.rs/openinfra-logger"
+readme = "README.md"
+keywords = ["logging", "logger", "structured", "observability", "telemetry"]
+categories = ["development-tools::debugging", "encoding"]
+
+[lib]
+name = "openinfra_logger"
+path = "src/lib.rs"
 
 [dependencies]
-# Dependencies would go here (e.g., serde_json).
-# For this foundational version, we use standard macro string formatting to remain zero-dependency.
+# Intentionally empty. The crate is built from the standard library only.
