@@ -1,3 +1,7 @@
+<p align="center">
+  <img src=".github/banner.svg" alt="OpenInfra Logger — Universal structured logging. Built from nothing but stdlib." width="100%" />
+</p>
+
 # OpenInfra Logger
 
 ![NPM Version](https://img.shields.io/npm/v/@jonathascordeiro20/openinfra-logger)
