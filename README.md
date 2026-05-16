@@ -138,6 +138,12 @@ npm run analyze app.log -- --prompt-only     # print the prompt, no API call
 
 Your log lines stay on your machine unless you explicitly choose `--llm=anthropic` or `--llm=openai` (which send to the cloud). The `--llm=ollama` path keeps everything local.
 
+## Documentation
+
+Full manual in [`docs/manual/`](docs/manual/README.md) — 14 chapters covering concepts, configuration, every transport and formatter, redaction internals, OpenTelemetry, the analyzer CLI, performance, migration from Pino/Winston/structlog/zap, troubleshooting, FAQ, and a complete API reference per runtime.
+
+5-minute quickstarts per runtime: [Node](docs/quickstart-node.md) · [Python](docs/quickstart-python.md) · [Go](docs/quickstart-go.md) · [Rust](docs/quickstart-rust.md).
+
 ## Testing
 
 The repo includes a comprehensive test matrix — **69 tests across all four runtimes**:
