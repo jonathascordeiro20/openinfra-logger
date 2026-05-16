@@ -1,8 +1,24 @@
-# OpenInfra Logger
+<p align="center">
+  <img src="brand/social/readme-banner-1600x400.svg" alt="OIL · OpenInfra Logger — Universal structured logging. Built from nothing but stdlib." width="100%" />
+</p>
 
-![NPM Version](https://img.shields.io/npm/v/@jonathascordeiro20/openinfra-logger) ![License](https://img.shields.io/npm/l/@jonathascordeiro20/openinfra-logger) ![Build Status](https://img.shields.io/github/actions/workflow/status/jonathascordeiro20/openinfra-logger/ci.yml)
+<h1 align="center">OIL · OpenInfra Logger</h1>
 
-**OpenInfra Logger** is a robust, structured logging and observability library designed for Node.js and Python applications. It serves as an invisible yet critical piece of infrastructure, ensuring modern applications maintain unparalleled visibility into their security, performance, and operational health.
+<p align="center">
+  <strong>One log shape. Four runtimes. Zero dependencies.</strong><br/>
+  <em>Universal structured logging · Auto-redaction · Native batching · AI root-cause analysis.</em>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/npm/v/@jonathascordeiro20/openinfra-logger?style=flat-square&labelColor=0A0C10&color=FF5C28" alt="NPM Version" />
+  <img src="https://img.shields.io/npm/l/@jonathascordeiro20/openinfra-logger?style=flat-square&labelColor=0A0C10&color=F4F2EC" alt="License" />
+  <img src="https://img.shields.io/github/actions/workflow/status/jonathascordeiro20/openinfra-logger/ci.yml?style=flat-square&labelColor=0A0C10&color=00D9A3" alt="Build Status" />
+  <img src="https://img.shields.io/badge/runtimes-Node%20·%20Python%20·%20Go%20·%20Rust-F4F2EC?style=flat-square&labelColor=0A0C10" alt="Runtimes" />
+</p>
+
+---
+
+**OpenInfra Logger** (OIL) is a robust, structured logging and observability library for **Node.js, Python, Go and Rust**. It serves as an invisible yet critical piece of infrastructure, ensuring modern applications maintain unparalleled visibility into their security, performance, and operational health.
 
 ## Ecosystem Impact & Criticality
 
@@ -99,9 +115,43 @@ npm run analyze app.log
 ```
 *Note: Set the `ANTHROPIC_API_KEY` environment variable for automated API integration, or the tool will generate a prompt for you to paste into the Claude web interface.*
 
-## License
+## Brand
 
-This project is licensed under the [MIT License](LICENSE). Please review our [Code of Conduct](CODE_OF_CONDUCT.md) and [Contributing Guidelines](CONTRIBUTING.md) before submitting PRs.
+<p align="center">
+  <img src="brand/mark/mark.svg" alt="OIL mark" width="96" />
+</p>
+
+OIL ships with a complete brand kit. All assets are in [`brand/`](brand/) as scalable SVGs.
+
+| Token  | Hex        | Use |
+|--------|------------|-----|
+| **Ink**    | `#0A0C10` | Primary surface on dark, body text on light |
+| **Paper**  | `#F4F2EC` | Primary surface on light, text on dark |
+| **Signal** | `#FF5C28` | The accent — marks, CTAs, one highlight per surface |
+| **Mint**   | `#00D9A3` | `Shield active` status only (sparingly) |
+| **Steel**  | `#6B7280` | Secondary text, meta |
+
+**Typography** — [Geist](https://vercel.com/font/geist) (display, UI, body) · [JetBrains Mono](https://www.jetbrains.com/lp/mono/) (code, CLI, labels)
+
+**Assets** — `brand/mark/`, `brand/favicon/`, `brand/lockup/`, `brand/social/`. See [`brand/README.md`](brand/README.md) for the full catalog and HTML embed snippets. Open [`brand/gallery.html`](brand/gallery.html) in a browser for a visual inspection page.
+
+## Landing page
+
+A static, dependency-free landing page lives at [`landing/`](landing/). Same zero-dependency philosophy as the library: one HTML, one CSS, ~50 lines of vanilla JS, no build step.
+
+```bash
+python -m http.server -d landing 8080   # then open http://localhost:8080
+```
+
+Deploys directly to GitHub Pages, Vercel, Netlify or Cloudflare Pages. See [`landing/README.md`](landing/README.md) for instructions.
+
+### Hostinger / shared hosting build
+
+A self-contained, dependency-free static bundle ready for shared hosting is in [`dist/`](dist/) (~57 KB uncompressed, ~18 KB gzipped). Includes `.htaccess` (MIME types, gzip, cache, security headers), `robots.txt`, `sitemap.xml`, favicons and OG card.
+
+Upload via Hostinger File Manager or FTP — drop the **contents** of `dist/` into `public_html/`. Full step-by-step in [`dist/README.md`](dist/README.md).
+
+## License
 
 ---
 <div align="center">

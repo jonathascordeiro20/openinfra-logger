@@ -1,7 +1,14 @@
 # Node.js
 node_modules/
-dist/
 .env
+
+# Built / deploy artifacts (the dist/ folder is a deployable bundle and is
+# intentionally committed so users can grab it directly; the zip is local-only)
+openinfra-logger-hostinger.zip
+
+# Rust
+rust/target/
+rust/Cargo.lock
 
 # Python
 __pycache__/

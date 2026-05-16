@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation & Quickstart
+    url: https://openinfralogger.fun
+    about: Read the docs, examples and code samples at openinfralogger.fun
+  - name: README — Installation & Usage
+    url: https://github.com/jonathascordeiro20/openinfra-logger#readme
+    about: Install instructions for Node, Python, Go and Rust
+  - name: Discussions — Q&A and ideas
+    url: https://github.com/jonathascordeiro20/openinfra-logger/discussions
+    about: Ask a question, share an idea, or discuss design

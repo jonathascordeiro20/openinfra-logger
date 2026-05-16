@@ -12,6 +12,11 @@ import datetime
 import urllib.request
 import urllib.error
 
+
+def _utc_now_iso():
+    """ISO-8601 UTC timestamp with trailing 'Z', forward-compatible with Python 3.12+."""
+    return datetime.datetime.now(datetime.timezone.utc).isoformat().replace('+00:00', 'Z')
+
 # Internal configuration
 _config = {
     'transports': ['console'], # console, file, remote
@@ -83,7 +88,7 @@ def _flush_remote():
         _logger.error(json.dumps({
             "level": "error", 
             "message": f"OpenInfra Logger: Failed to send remote logs batch: {str(e)}",
-            "timestamp": datetime.datetime.utcnow().isoformat() + "Z"
+            "timestamp": _utc_now_iso()
         }))
 
 def extract_trace_context():
@@ -129,7 +134,7 @@ def _dispatch(log_entry, original_level):
             _logger.error(json.dumps({
                 "level": "error",
                 "message": f"OpenInfra Logger: Failed to write to log file: {str(e)}",
-                "timestamp": datetime.datetime.utcnow().isoformat() + "Z"
+                "timestamp": _utc_now_iso()
             }))
 
     # 3. Remote transport
@@ -157,12 +162,12 @@ def log(message: str, level: str = 'info', metadata: dict = None):
         _logger.warning(json.dumps({
             "level": "warn",
             "message": f"Invalid log level '{level}' provided, falling back to 'info'",
-            "timestamp": datetime.datetime.utcnow().isoformat() + "Z"
+            "timestamp": _utc_now_iso()
         }))
         normalized_level = 'info'
 
     log_entry = {
-        "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
+        "timestamp": _utc_now_iso(),
         "level": normalized_level,
         "message": message,
     }

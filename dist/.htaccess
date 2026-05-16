@@ -1,0 +1,52 @@
+# =====================================================
+# OpenInfra Logger — Hostinger / Apache configuration
+# =====================================================
+
+# Use index.html as the directory default
+DirectoryIndex index.html
+
+# --------- MIME types ---------
+AddType image/svg+xml                 .svg .svgz
+AddType text/css                       .css
+AddType application/javascript         .js
+AddType application/manifest+json      .webmanifest
+AddType application/xml                .xml
+
+# --------- Compression ---------
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css text/plain text/xml application/javascript application/json image/svg+xml
+</IfModule>
+
+# --------- Cache headers ---------
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresDefault                              "access plus 1 day"
+  ExpiresByType text/html                     "access plus 0 seconds"
+  ExpiresByType text/css                      "access plus 30 days"
+  ExpiresByType application/javascript        "access plus 30 days"
+  ExpiresByType image/svg+xml                 "access plus 30 days"
+  ExpiresByType image/png                     "access plus 30 days"
+  ExpiresByType image/jpeg                    "access plus 30 days"
+  ExpiresByType image/x-icon                  "access plus 1 year"
+  ExpiresByType font/woff2                    "access plus 1 year"
+</IfModule>
+
+# --------- Security headers ---------
+<IfModule mod_headers.c>
+  Header set X-Content-Type-Options "nosniff"
+  Header set X-Frame-Options "SAMEORIGIN"
+  Header set Referrer-Policy "strict-origin-when-cross-origin"
+  Header set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+  Header set X-XSS-Protection "1; mode=block"
+</IfModule>
+
+# --------- HTTPS redirect ---------
+# Uncomment after SSL is provisioned (Hostinger does this automatically for most plans)
+# <IfModule mod_rewrite.c>
+#   RewriteEngine On
+#   RewriteCond %{HTTPS} !=on
+#   RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
+# </IfModule>
+
+# --------- 404 fallback ---------
+ErrorDocument 404 /index.html

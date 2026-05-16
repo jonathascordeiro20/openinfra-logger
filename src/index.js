@@ -57,6 +57,20 @@ function redactObject(obj, keysToRedact) {
 let remoteBuffer = [];
 let flushTimeout = null;
 
+// Serialize file writes through a promise chain so concurrent log() calls
+// preserve emission order on disk. fs.appendFile is async; without this,
+// bursty writes can interleave.
+let fileWriteChain = Promise.resolve();
+function appendToFileOrdered(filePath, line) {
+  fileWriteChain = fileWriteChain.then(() => new Promise((resolve) => {
+    fs.appendFile(filePath, line, (err) => {
+      if (err) console.error('OpenInfra Logger: Failed to write to log file', err);
+      resolve();
+    });
+  }));
+  return fileWriteChain;
+}
+
 function flushRemote() {
   if (remoteBuffer.length === 0) return;
   
@@ -117,9 +131,7 @@ function dispatch(logEntry, originalLevel) {
   }
 
   if (config.transports.includes('file') && config.filePath) {
-    fs.appendFile(config.filePath, output + '\n', (err) => {
-      if (err) console.error('OpenInfra Logger: Failed to write to log file', err);
-    });
+    appendToFileOrdered(config.filePath, output + '\n');
   }
 
   if (config.transports.includes('remote')) {
@@ -139,18 +151,17 @@ function dispatch(logEntry, originalLevel) {
  * @param {object} [metadata={}] - Additional context for the log
  */
 function log(message, level = 'info', metadata = {}) {
-  const normalizedLevel = level.toLowerCase();
-  
+  let normalizedLevel = level.toLowerCase();
+
   if (!LEVELS[normalizedLevel]) {
     console.warn(JSON.stringify({
       level: 'warn',
       message: `Invalid log level '${level}' provided, falling back to 'info'`,
       timestamp: new Date().toISOString()
     }));
-    level = 'info';
+    normalizedLevel = 'info';
   }
 
-  // Inject default metadata and OpenTelemetry traceId if present
   let logEntry = {
     timestamp: new Date().toISOString(),
     level: normalizedLevel,
